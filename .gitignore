@@ -71,9 +71,12 @@ doc/devref/devref/
 doc/manual/manual/
 /.history
 /patches
-change.new.txt
-change.txt
-.DS_Store
 apply_semantic.py
+semantic_actual.diff
+semantic_final.diff
 *.dirty.c
 *.old.c
+.DS_Store
+change.new.txt
+change.txt
+

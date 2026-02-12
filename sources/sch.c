@@ -1464,8 +1464,8 @@ void WriteArgument(WORD *t)
 					i -= AM.IndDum;
 					*Out++ = 'N';
 					Out = NumCopy(i,Out);
-					*Out++ = '_';
-					*Out++ = '?';
+					if ( AC.OutputMode == MATHEMATICAMODE ) Out = StrCopy((UBYTE *)"sumindex",Out); else { *Out++ = '_';
+					*Out++ = '?'; }
 					*Out = 0;
 				}
 				else {
@@ -1552,7 +1552,14 @@ int WriteSubTerm(WORD *sterm, WORD first)
 					}
 				}
 				if ( *t < NumSymbols ) {
-					Out = StrCopy(FindSymbol(*t),buffer); t++;
+					if (AC.OutputMode == MATHEMATICAMODE &&
+					    (symbols[*t].complex & VARTYPEIMAGINARY) == VARTYPEIMAGINARY) {
+						Out = StrCopy((UBYTE *)"I", buffer);
+						t++;
+					} else {
+						Out = StrCopy(FindSymbol(*t), buffer);
+						t++;
+					}
 /*					Out = StrCopy(VARNAME(symbols,*t),buffer); t++; */
 				}
 				else {
@@ -1609,8 +1616,8 @@ int WriteSubTerm(WORD *sterm, WORD first)
 						i -= AM.IndDum;
 						*Out++ = 'N';
 						Out = NumCopy(i,Out);
-						*Out++ = '_';
-						*Out++ = '?';
+						if ( AC.OutputMode == MATHEMATICAMODE ) Out = StrCopy((UBYTE *)"sumindex",Out); else { *Out++ = '_';
+						*Out++ = '?'; }
 						*Out = 0;
 					}
 					else
@@ -1648,8 +1655,8 @@ int WriteSubTerm(WORD *sterm, WORD first)
 						Out = buffer;
 						*Out++ = 'N';
 						Out = NumCopy(i,Out);
-						*Out++ = '_';
-						*Out++ = '?';
+						if ( AC.OutputMode == MATHEMATICAMODE ) Out = StrCopy((UBYTE *)"sumindex",Out); else { *Out++ = '_';
+						*Out++ = '?'; }
 						*Out = 0;
 					}
 					else {
@@ -1687,7 +1694,7 @@ int WriteSubTerm(WORD *sterm, WORD first)
 					if ( first ) TokenToLine((UBYTE *)" ");
 				}
 				if ( !first ) MultiplyToLine();
-				Out = StrCopy((UBYTE *)"d_(",buffer);
+				if ( AC.OutputMode == MATHEMATICAMODE ) Out = StrCopy((UBYTE *)"KroneckerDelta[",buffer); else Out = StrCopy((UBYTE *)"d_(",buffer);
 				if ( *t >= AM.OffsetIndex ) {
 					if ( *t < AM.IndDum ) {
 						Out = StrCopy(FindIndex(*t),Out);
@@ -1697,8 +1704,8 @@ int WriteSubTerm(WORD *sterm, WORD first)
 					else {
 						*Out++ = 'N';
 						Out = NumCopy( *t++ - AM.IndDum, Out);
-						*Out++ = '_';
-						*Out++ = '?';
+						if ( AC.OutputMode == MATHEMATICAMODE ) Out = StrCopy((UBYTE *)"sumindex",Out); else { *Out++ = '_';
+						*Out++ = '?'; }
 						*Out = 0;
 					}
 				}
@@ -1716,14 +1723,14 @@ int WriteSubTerm(WORD *sterm, WORD first)
 					else {
 						*Out++ = 'N';
 						Out = NumCopy(*t++ - AM.IndDum,Out);
-						*Out++ = '_';
-						*Out++ = '?';
+						if ( AC.OutputMode == MATHEMATICAMODE ) Out = StrCopy((UBYTE *)"sumindex",Out); else { *Out++ = '_';
+						*Out++ = '?'; }
 					}
 				}
 				else {
 					Out = NumCopy(*t++,Out);
 				}
-				*Out++ = ')';
+				if ( AC.OutputMode == MATHEMATICAMODE ) *Out++ = ']'; else *Out++ = ')';
 				*Out = 0;
 				TokenToLine(buffer);
 				first = 0;
@@ -1840,12 +1847,52 @@ int WriteSubTerm(WORD *sterm, WORD first)
 			}
 			t += FUNHEAD-2;
 
-			if ( *sterm == GAMMA && t[-FUNHEAD+1] == FUNHEAD+1 ) {
+			if ( AC.OutputMode == MATHEMATICAMODE && *sterm == SQRTFUNCTION ) {
+				TokenToLine((UBYTE *)"Sqrt["); closepar[0] = (UBYTE)']';
+			}
+			else if ( AC.OutputMode == MATHEMATICAMODE && *sterm == ROOTFUNCTION ) {
+				WORD *arg1 = t;
+				WORD *arg2 = t;
+				NEXTARG(arg2);
+				TokenToLine((UBYTE *)"Power[");
+				WriteArgument(arg2);
+				TokenToLine((UBYTE *)", 1/(");
+				WriteArgument(arg1);
+				TokenToLine((UBYTE *)")]");
+				break;
+			}
+			else if ( *sterm == GAMMA && t[-FUNHEAD+1] == FUNHEAD+1 ) {
 				TokenToLine((UBYTE *)"gi_(");
 			}
 			else {
 				if ( *sterm != DUMFUN ) {
-					Out = StrCopy(FindFunction(*sterm),buffer);
+				if (AC.OutputMode == MATHEMATICAMODE) {
+					switch (*sterm) {
+					case ABSFUNCTION:
+						Out = StrCopy((UBYTE *)"Abs", buffer);
+						break;
+					case FACTORIAL:
+						Out = StrCopy((UBYTE *)"Factorial", buffer);
+						break;
+					case THETA:
+						Out = StrCopy((UBYTE *)"HeavisideTheta", buffer);
+						break;
+					case MINFUNCTION:
+						Out = StrCopy((UBYTE *)"Min", buffer);
+						break;
+					case MAXFUNCTION:
+						Out = StrCopy((UBYTE *)"Max", buffer);
+						break;
+					case BINOMIAL:
+						Out = StrCopy((UBYTE *)"Binomial", buffer);
+						break;
+					default:
+						Out = StrCopy(FindFunction(*sterm), buffer);
+						break;
+					}
+				} else {
+					Out = StrCopy(FindFunction(*sterm), buffer);
+				}
 /*					Out = StrCopy(VARNAME(functions,*sterm - FUNCTION),buffer); */
 				}
 				else { Out = buffer; *Out = 0; }
@@ -1881,8 +1928,8 @@ int WriteSubTerm(WORD *sterm, WORD first)
 							Out = buffer;
 							*Out++ = 'N';
 							Out = NumCopy(j - AM.IndDum,Out);
-							*Out++ = '_';
-							*Out++ = '?';
+							if ( AC.OutputMode == MATHEMATICAMODE ) Out = StrCopy((UBYTE *)"sumindex",Out); else { *Out++ = '_';
+							*Out++ = '?'; }
 							*Out = 0;
 							TokenToLine(buffer);
 						}
