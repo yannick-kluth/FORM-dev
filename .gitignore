@@ -83,3 +83,6 @@ semantic_final.diff
 >>>>>>> 9e240de (enhanced format mathematica output)
 *.dirty.c
 *.old.c
+.DS_Store
+change.new.txt
+change.txt
