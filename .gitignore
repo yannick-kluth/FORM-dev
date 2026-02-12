@@ -71,9 +71,15 @@ doc/devref/devref/
 doc/manual/manual/
 /.history
 /patches
+<<<<<<< HEAD
 change.new.txt
 change.txt
 .DS_Store
 apply_semantic.py
+=======
+apply_semantic.py
+semantic_actual.diff
+semantic_final.diff
+>>>>>>> 9e240de (enhanced format mathematica output)
 *.dirty.c
 *.old.c
