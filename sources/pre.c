@@ -314,7 +314,355 @@ higherlevel:
 				}
 				s = EndOfToken(namebuf);
 				if ( *s == '_' ) s++;
-				if ( *s == '-' && s[1] == '-' && s[2] == 0 )
+                                if (*s == '[') {
+                                  *s = 0;
+                                  s++;
+                                  UBYTE *indexstr = s;
+                                  int bnest = 0;
+                                  UBYTE bquote = 0;
+                                  while (*s && (bnest > 0 || bquote != 0 ||
+                                                *s != ']')) {
+                                    if (bquote) {
+                                      if (*s == bquote &&
+                                          (s == indexstr || *(s - 1) != '\\'))
+                                        bquote = 0;
+                                    } else if ((*s == '\'' || *s == '\"') &&
+                                               (s == indexstr ||
+                                                *(s - 1) != '\\')) {
+                                      bquote = *s;
+                                    } else if (*s == '[') {
+                                      bnest++;
+                                    } else if (*s == ']') {
+                                      if (bnest > 0)
+                                        bnest--;
+                                    }
+                                    s++;
+                                  }
+                                  if (*s == ']') {
+                                    UBYTE *content =
+                                        GetPreVar(namebuf, WITHOUTERROR);
+                                    if (content == 0) {
+                                      MesPrint(
+                                          "@Undefined variable %s[...] used",
+                                          namebuf);
+                                      Terminate(-1);
+                                    }
+                                    LONG start_idx = 1;
+                                    LONG end_idx = -1;
+                                    UBYTE *buf;
+                                    int len;
+                                    UBYTE numbuf[32];
+                                    UBYTE *indbuf = numbuf;
+                                    int idxlen = s - indexstr;
+                                    if (idxlen >= 32)
+                                      indbuf = (UBYTE *)Malloc1(idxlen + 1,
+                                                                "index_buf");
+                                    UBYTE *p1 = indexstr, *p2 = indbuf;
+                                    while (p1 < s)
+                                      *p2++ = *p1++;
+                                    *p2 = 0;
+                                    UBYTE *colon =
+                                        (UBYTE *)strchr((char *)indbuf, ':');
+                                    if (indbuf[0] == 's' && indbuf[1] != 0 &&
+                                        !isdigit(indbuf[1]) &&
+                                        indbuf[1] != '(' && indbuf[1] != '-' &&
+                                        indbuf[1] != '+') {
+                                      UBYTE delim = indbuf[1];
+                                      UBYTE *old_s = indbuf + 2;
+                                      UBYTE *p = old_s;
+                                      while (*p &&
+                                             (*p != delim ||
+                                              (p > old_s && *(p - 1) == '\\')))
+                                        p++;
+                                      if (*p == delim) {
+                                        *p++ = 0;
+                                        UBYTE *new_s = p;
+                                        while (*p && (*p != delim ||
+                                                      (p > new_s &&
+                                                       *(p - 1) == '\\')))
+                                          p++;
+                                        if (*p == delim) {
+                                          *p = 0;
+                                          UBYTE *src, *dst;
+                                          src = old_s;
+                                          dst = old_s;
+                                          while (*src) {
+                                            if (*src == '\\' && *(src + 1))
+                                              src++;
+                                            *dst++ = *src++;
+                                          }
+                                          *dst = 0;
+                                          src = new_s;
+                                          dst = new_s;
+                                          while (*src) {
+                                            if (*src == '\\' && *(src + 1))
+                                              src++;
+                                            *dst++ = *src++;
+                                          }
+                                          *dst = 0;
+                                          int o_len = strlen((char *)old_s);
+                                          int n_len = strlen((char *)new_s);
+                                          int c_len = strlen((char *)content);
+                                          int occurrences = 0;
+                                          if (o_len > 0) {
+                                            UBYTE *pos = content;
+                                            while ((pos = (UBYTE *)strstr(
+                                                        (char *)pos,
+                                                        (char *)old_s)) !=
+                                                   NULL) {
+                                              occurrences++;
+                                              pos += o_len;
+                                            }
+                                          }
+                                          int new_size =
+                                              c_len +
+                                              occurrences * (n_len - o_len);
+                                          buf = (UBYTE *)Malloc1(
+                                              new_size + 1, "stream->buffer");
+                                          src = content;
+                                          dst = buf;
+                                          if (o_len > 0) {
+                                            while (*src) {
+                                              if (strncmp((char *)src,
+                                                          (char *)old_s,
+                                                          o_len) == 0) {
+                                                memcpy(dst, new_s, n_len);
+                                                dst += n_len;
+                                                src += o_len;
+                                              } else {
+                                                *dst++ = *src++;
+                                              }
+                                            }
+                                          } else {
+                                            memcpy(dst, content, c_len);
+                                            dst += c_len;
+                                          }
+                                          *dst = 0;
+                                          if (indbuf != numbuf)
+                                            M_free(indbuf, "index_buf");
+                                          goto push_stream;
+                                        }
+                                      }
+                                    }
+                                    if (indbuf[0] == '?') {
+                                      UBYTE *search = indbuf + 1;
+                                      int slen = strlen((char *)search);
+                                      int found = 0;
+                                      int curr = 1;
+                                      UBYTE *p = content;
+                                      while (*p ||
+                                             (p > content && p[-1] == ',')) {
+                                        while (*p == ' ' || *p == '\t')
+                                          p++;
+                                        UBYTE *s1 = p;
+                                        int nest = 0;
+                                        UBYTE quote = 0;
+                                        while (*p && (nest > 0 || quote != 0 ||
+                                                      *p != ',')) {
+                                          if (quote) {
+                                            if (*p == quote)
+                                              quote = 0;
+                                          } else if (*p == '\'' || *p == '\"') {
+                                            quote = *p;
+                                          } else if (*p == '(' || *p == '[' ||
+                                                     *p == '{') {
+                                            nest++;
+                                          } else if (*p == ')' || *p == ']' ||
+                                                     *p == '}') {
+                                            if (nest > 0)
+                                              nest--;
+                                          }
+                                          p++;
+                                        }
+                                        UBYTE *e1 = p;
+                                        while (e1 > s1 && (e1[-1] == ' ' ||
+                                                           e1[-1] == '\t'))
+                                          e1--;
+                                        if (slen == (e1 - s1) &&
+                                            strncmp((char *)s1, (char *)search,
+                                                    slen) == 0) {
+                                          found = curr;
+                                          break;
+                                        }
+                                        if (*p == ',') {
+                                          p++;
+                                          curr++;
+                                        } else
+                                          break;
+                                      }
+                                      UBYTE valbuf[32];
+                                      sprintf((char *)valbuf, "%d", found);
+                                      buf = (UBYTE *)Malloc1(
+                                          strlen((char *)valbuf) + 1,
+                                          "stream->buffer");
+                                      strcpy((char *)buf, (char *)valbuf);
+                                      if (indbuf != numbuf)
+                                        M_free(indbuf, "index_buf");
+                                      goto push_stream;
+                                    }
+                                    if (colon) {
+                                      *colon = 0;
+                                      if (indbuf[0] != 0)
+                                        PreEval(indbuf, &start_idx);
+                                      if (colon[1] != 0)
+                                        PreEval(colon + 1, &end_idx);
+                                    } else {
+                                      PreEval(indbuf, &start_idx);
+                                      end_idx = start_idx;
+                                    }
+                                    if (indbuf != numbuf)
+                                      M_free(indbuf, "index_buf");
+                                    UBYTE *elem = content;
+                                    int count = 1;
+                                    if (start_idx == 0 && colon == 0) {
+                                      int total_count = 0;
+                                      UBYTE *p = content;
+                                      if (*p) {
+                                        total_count = 1;
+                                        int nest = 0;
+                                        UBYTE quote = 0;
+                                        while (*p) {
+                                          if (quote) {
+                                            if (*p == quote)
+                                              quote = 0;
+                                          } else if (*p == '\'' || *p == '\"') {
+                                            quote = *p;
+                                          } else if (*p == '(' || *p == '[' ||
+                                                     *p == '{') {
+                                            nest++;
+                                          } else if (*p == ')' || *p == ']' ||
+                                                     *p == '}') {
+                                            if (nest > 0)
+                                              nest--;
+                                          } else if (*p == ',' && nest == 0) {
+                                            total_count++;
+                                          }
+                                          p++;
+                                        }
+                                      }
+                                      UBYTE valbuf[32];
+                                      sprintf((char *)valbuf, "%d",
+                                              total_count);
+                                      buf = (UBYTE *)Malloc1(
+                                          strlen((char *)valbuf) + 1,
+                                          "stream->buffer");
+                                      strcpy((char *)buf, (char *)valbuf);
+                                    } else if (end_idx != -1 &&
+                                               start_idx > end_idx) {
+                                      buf =
+                                          (UBYTE *)Malloc1(1, "stream->buffer");
+                                      buf[0] = 0;
+                                    } else {
+                                      int nest = 0;
+                                      UBYTE quote = 0;
+                                      while (count < start_idx && *elem) {
+                                        if (quote) {
+                                          if (*elem == quote)
+                                            quote = 0;
+                                        } else if (*elem == '\'' ||
+                                                   *elem == '\"') {
+                                          quote = *elem;
+                                        } else if (*elem == '(' ||
+                                                   *elem == '[' ||
+                                                   *elem == '{') {
+                                          nest++;
+                                        } else if (*elem == ')' ||
+                                                   *elem == ']' ||
+                                                   *elem == '}') {
+                                          if (nest > 0)
+                                            nest--;
+                                        } else if (*elem == ',' && nest == 0) {
+                                          count++;
+                                        }
+                                        elem++;
+                                      }
+                                      if (count == start_idx && *elem) {
+                                        while (*elem == ' ' || *elem == '\t')
+                                          elem++;
+                                        UBYTE *start_ptr = elem;
+                                        nest = 0;
+                                        quote = 0;
+                                        while (*elem &&
+                                               (end_idx == -1 ||
+                                                count < end_idx || nest > 0 ||
+                                                quote != 0 || *elem != ',')) {
+                                          if (quote) {
+                                            if (*elem == quote)
+                                              quote = 0;
+                                          } else if (*elem == '\'' ||
+                                                     *elem == '\"') {
+                                            quote = *elem;
+                                          } else if (*elem == '(' ||
+                                                     *elem == '[' ||
+                                                     *elem == '{') {
+                                            nest++;
+                                          } else if (*elem == ')' ||
+                                                     *elem == ']' ||
+                                                     *elem == '}') {
+                                            if (nest > 0)
+                                              nest--;
+                                          } else if (*elem == ',' &&
+                                                     nest == 0 && quote == 0) {
+                                            count++;
+                                          }
+                                          elem++;
+                                        }
+                                        if (end_idx != -1 && count == end_idx &&
+                                            *elem == ',' && nest == 0 &&
+                                            quote == 0) {
+                                        } else if (end_idx != -1 &&
+                                                   count == end_idx) {
+                                          while (*elem &&
+                                                 (nest > 0 || quote != 0 ||
+                                                  *elem != ',')) {
+                                            if (quote) {
+                                              if (*elem == quote)
+                                                quote = 0;
+                                            } else if (*elem == '\'' ||
+                                                       *elem == '\"') {
+                                              quote = *elem;
+                                            } else if (*elem == '(' ||
+                                                       *elem == '[' ||
+                                                       *elem == '{') {
+                                              nest++;
+                                            } else if (*elem == ')' ||
+                                                       *elem == ']' ||
+                                                       *elem == '}') {
+                                              if (nest > 0)
+                                                nest--;
+                                            }
+                                            elem++;
+                                          }
+                                        }
+                                        len = elem - start_ptr;
+                                        while (len > 0 &&
+                                               (start_ptr[len - 1] == ' ' ||
+                                                start_ptr[len - 1] == '\t'))
+                                          len--;
+                                        buf = (UBYTE *)Malloc1(
+                                            len + 1, "stream->buffer");
+                                        for (int k = 0; k < len; k++)
+                                          buf[k] = start_ptr[k];
+                                        buf[len] = 0;
+                                      } else {
+                                        buf = (UBYTE *)Malloc1(
+                                            1, "stream->buffer");
+                                        buf[0] = 0;
+                                      }
+                                    }
+                                  push_stream:
+                                    stream = OpenStream(buf, PRECALCSTREAM, 0,
+                                                        raiselow);
+                                    if (stream == 0) {
+                                      M_free(buf, "stream->buffer");
+                                      MesPrint("Error opening stream");
+                                      Terminate(-1);
+                                    }
+                                    c = GetInput();
+                                    goto endofloop;
+                                  }
+                                }
+                                if ( *s == '-' && s[1] == '-' && s[2] == 0 )
 					raiselow = PRELOWERAFTER;
 				else if ( *s == '+' && s[1] == '+' && s[2] == 0 )
 					raiselow = PRERAISEAFTER;

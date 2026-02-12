@@ -69,3 +69,11 @@ doc/manual/version.tex
 
 doc/devref/devref/
 doc/manual/manual/
+/.history
+/patches
+change.new.txt
+change.txt
+.DS_Store
+apply_semantic.py
+*.dirty.c
+*.old.c
