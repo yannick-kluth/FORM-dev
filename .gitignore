@@ -72,3 +72,4 @@ doc/manual/manual/
 .DS_Store
 /.history
 /patches
+*.old.c
