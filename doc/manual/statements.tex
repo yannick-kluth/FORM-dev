@@ -1963,7 +1963,17 @@ format. It is not guaranteed that this is perfect.}
 
 \leftvitem{3.5cm}{mathematica\index{mathematica}\index{format!mathematica}}
 \rightvitem{13cm}{Output will be as much as possible compatible with 
-Mathematica format. It is not guaranteed that this is perfect.}
+Mathematica format. This includes the use of square brackets \texttt{[]} for 
+all function and vector arguments, and renaming built in functions to their 
+standard Mathematica counterparts. Transformed functions include: \texttt{d\_} 
+$\rightarrow$ \texttt{KroneckerDelta}, \texttt{i\_} $\rightarrow$ \texttt{I}, 
+\texttt{abs\_} $\rightarrow$ \texttt{Abs}, \texttt{sqrt\_} $\rightarrow$ \texttt{Sqrt}, 
+\texttt{root\_} $\rightarrow$ \texttt{Power}, \texttt{fac\_} $\rightarrow$ \texttt{Factorial},
+\texttt{binom\_} $\rightarrow$ \texttt{Binomial}, \texttt{theta\_} $\rightarrow$ \texttt{HeavisideTheta},
+\texttt{min\_} $\rightarrow$ \texttt{Min}, and \texttt{max\_} $\rightarrow$ \texttt{Max}. 
+Additionally, generated summation indices use a \texttt{sumindex} suffix 
+(e.g., \texttt{N1sumindex}) instead of the default \texttt{\_?} suffix to 
+ensure compatibility with Mathematica's parser.}
 
 \leftvitem{3.5cm}{reduce\index{reduce}\index{format!reduce}}
 \rightvitem{13cm}{Output will be as much as possible compatible with 
