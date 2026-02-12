@@ -826,6 +826,7 @@ extern int    OpenFile(char *);
 extern int    OpenAddFile(char *);
 extern int    ReOpenFile(char *);
 extern int    CreateFile(char *);
+extern void   MakePath(char *);
 extern int    CreateLogFile(char *);
 extern void   CloseFile(int);
 extern int    CopyFile(char *, char *);
