@@ -69,6 +69,6 @@ doc/manual/version.tex
 
 doc/devref/devref/
 doc/manual/manual/
-/.history
 .DS_Store
+/.history
 /patches
