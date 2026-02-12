@@ -1552,7 +1552,14 @@ int WriteSubTerm(WORD *sterm, WORD first)
 					}
 				}
 				if ( *t < NumSymbols ) {
-					Out = StrCopy(FindSymbol(*t),buffer); t++;
+					if (AC.OutputMode == MATHEMATICAMODE &&
+					    (symbols[*t].complex & VARTYPEIMAGINARY) == VARTYPEIMAGINARY) {
+						Out = StrCopy((UBYTE *)"I", buffer);
+						t++;
+					} else {
+						Out = StrCopy(FindSymbol(*t), buffer);
+						t++;
+					}
 /*					Out = StrCopy(VARNAME(symbols,*t),buffer); t++; */
 				}
 				else {
@@ -1859,7 +1866,33 @@ int WriteSubTerm(WORD *sterm, WORD first)
 			}
 			else {
 				if ( *sterm != DUMFUN ) {
-					Out = StrCopy(FindFunction(*sterm),buffer);
+				if (AC.OutputMode == MATHEMATICAMODE) {
+					switch (*sterm) {
+					case ABSFUNCTION:
+						Out = StrCopy((UBYTE *)"Abs", buffer);
+						break;
+					case FACTORIAL:
+						Out = StrCopy((UBYTE *)"Factorial", buffer);
+						break;
+					case THETA:
+						Out = StrCopy((UBYTE *)"HeavisideTheta", buffer);
+						break;
+					case MINFUNCTION:
+						Out = StrCopy((UBYTE *)"Min", buffer);
+						break;
+					case MAXFUNCTION:
+						Out = StrCopy((UBYTE *)"Max", buffer);
+						break;
+					case BINOMIAL:
+						Out = StrCopy((UBYTE *)"Binomial", buffer);
+						break;
+					default:
+						Out = StrCopy(FindFunction(*sterm), buffer);
+						break;
+					}
+				} else {
+					Out = StrCopy(FindFunction(*sterm), buffer);
+				}
 /*					Out = StrCopy(VARNAME(functions,*sterm - FUNCTION),buffer); */
 				}
 				else { Out = buffer; *Out = 0; }
