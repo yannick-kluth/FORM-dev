@@ -45,6 +45,8 @@ static UBYTE underscore[2] = {'_',0};
 static PREVAR *ThePreVar = 0;
 
 static int ExitDoLoops(int, const char *);
+static int DoDo_internal(UBYTE *, int);
+static int DoEnddo_internal(UBYTE *, int);
 
 static KEYWORD precommands[] = {
 	 {"add"          , DoPreAdd       , 0, 0}
@@ -77,6 +79,8 @@ static KEYWORD precommands[] = {
 	,{"endinside"    , DoEndInside    , 0, 0}
 	,{"endnamespace" , DoEndNamespace , 0, 0}
 	,{"endprocedure" , DoEndprocedure , 0, 0}
+	,{"endprod"      , DoEndprod      , 0, 0}
+	,{"endsum"       , DoEndsum       , 0, 0}
 	,{"endswitch"    , DoPreEndSwitch , 0, 0}
 	,{"exchange"     , DoPreExchange  , 0, 0}
 	,{"external"     , DoExternal     , 0, 0}
@@ -97,6 +101,7 @@ static KEYWORD precommands[] = {
 	,{"printtimes"   , DoPrePrintTimes, 0, 0}
 	,{"procedure"    , DoProcedure    , 0, 0}
 	,{"procedureextension" , DoPrcExtension   , 0, 0}
+	,{"prod"         , DoProd         , 0, 0}
 	,{"prompt"       , DoPrompt       , 0, 0}
 	,{"redefine"     , DoRedefine     , 0, 0}
 	,{"remove"       , DoPreRemove    , 0, 0}
@@ -114,6 +119,7 @@ static KEYWORD precommands[] = {
 #ifdef WITHFLOAT
     ,{"startfloat"   , DoStartFloat   , 0, 0}
 #endif
+	,{"sum"          , DoSum          , 0, 0}
 	,{"switch"       , DoPreSwitch    , 0, 0}
 	,{"system"       , DoSystem       , 0, 0}
 	,{"terminate"    , DoTerminate    , 0, 0}
@@ -314,7 +320,355 @@ higherlevel:
 				}
 				s = EndOfToken(namebuf);
 				if ( *s == '_' ) s++;
-				if ( *s == '-' && s[1] == '-' && s[2] == 0 )
+                                if (*s == '[') {
+                                  *s = 0;
+                                  s++;
+                                  UBYTE *indexstr = s;
+                                  int bnest = 0;
+                                  UBYTE bquote = 0;
+                                  while (*s && (bnest > 0 || bquote != 0 ||
+                                                *s != ']')) {
+                                    if (bquote) {
+                                      if (*s == bquote &&
+                                          (s == indexstr || *(s - 1) != '\\'))
+                                        bquote = 0;
+                                    } else if ((*s == '\'' || *s == '\"') &&
+                                               (s == indexstr ||
+                                                *(s - 1) != '\\')) {
+                                      bquote = *s;
+                                    } else if (*s == '[') {
+                                      bnest++;
+                                    } else if (*s == ']') {
+                                      if (bnest > 0)
+                                        bnest--;
+                                    }
+                                    s++;
+                                  }
+                                  if (*s == ']') {
+                                    UBYTE *content =
+                                        GetPreVar(namebuf, WITHOUTERROR);
+                                    if (content == 0) {
+                                      MesPrint(
+                                          "@Undefined variable %s[...] used",
+                                          namebuf);
+                                      Terminate(-1);
+                                    }
+                                    LONG start_idx = 1;
+                                    LONG end_idx = -1;
+                                    UBYTE *buf;
+                                    int len;
+                                    UBYTE numbuf[32];
+                                    UBYTE *indbuf = numbuf;
+                                    int idxlen = s - indexstr;
+                                    if (idxlen >= 32)
+                                      indbuf = (UBYTE *)Malloc1(idxlen + 1,
+                                                                "index_buf");
+                                    UBYTE *p1 = indexstr, *p2 = indbuf;
+                                    while (p1 < s)
+                                      *p2++ = *p1++;
+                                    *p2 = 0;
+                                    UBYTE *colon =
+                                        (UBYTE *)strchr((char *)indbuf, ':');
+                                    if (indbuf[0] == 's' && indbuf[1] != 0 &&
+                                        !isdigit(indbuf[1]) &&
+                                        indbuf[1] != '(' && indbuf[1] != '-' &&
+                                        indbuf[1] != '+') {
+                                      UBYTE delim = indbuf[1];
+                                      UBYTE *old_s = indbuf + 2;
+                                      UBYTE *p = old_s;
+                                      while (*p &&
+                                             (*p != delim ||
+                                              (p > old_s && *(p - 1) == '\\')))
+                                        p++;
+                                      if (*p == delim) {
+                                        *p++ = 0;
+                                        UBYTE *new_s = p;
+                                        while (*p && (*p != delim ||
+                                                      (p > new_s &&
+                                                       *(p - 1) == '\\')))
+                                          p++;
+                                        if (*p == delim) {
+                                          *p = 0;
+                                          UBYTE *src, *dst;
+                                          src = old_s;
+                                          dst = old_s;
+                                          while (*src) {
+                                            if (*src == '\\' && *(src + 1))
+                                              src++;
+                                            *dst++ = *src++;
+                                          }
+                                          *dst = 0;
+                                          src = new_s;
+                                          dst = new_s;
+                                          while (*src) {
+                                            if (*src == '\\' && *(src + 1))
+                                              src++;
+                                            *dst++ = *src++;
+                                          }
+                                          *dst = 0;
+                                          int o_len = strlen((char *)old_s);
+                                          int n_len = strlen((char *)new_s);
+                                          int c_len = strlen((char *)content);
+                                          int occurrences = 0;
+                                          if (o_len > 0) {
+                                            UBYTE *pos = content;
+                                            while ((pos = (UBYTE *)strstr(
+                                                        (char *)pos,
+                                                        (char *)old_s)) !=
+                                                   NULL) {
+                                              occurrences++;
+                                              pos += o_len;
+                                            }
+                                          }
+                                          int new_size =
+                                              c_len +
+                                              occurrences * (n_len - o_len);
+                                          buf = (UBYTE *)Malloc1(
+                                              new_size + 1, "stream->buffer");
+                                          src = content;
+                                          dst = buf;
+                                          if (o_len > 0) {
+                                            while (*src) {
+                                              if (strncmp((char *)src,
+                                                          (char *)old_s,
+                                                          o_len) == 0) {
+                                                memcpy(dst, new_s, n_len);
+                                                dst += n_len;
+                                                src += o_len;
+                                              } else {
+                                                *dst++ = *src++;
+                                              }
+                                            }
+                                          } else {
+                                            memcpy(dst, content, c_len);
+                                            dst += c_len;
+                                          }
+                                          *dst = 0;
+                                          if (indbuf != numbuf)
+                                            M_free(indbuf, "index_buf");
+                                          goto push_stream;
+                                        }
+                                      }
+                                    }
+                                    if (indbuf[0] == '?') {
+                                      UBYTE *search = indbuf + 1;
+                                      int slen = strlen((char *)search);
+                                      int found = 0;
+                                      int curr = 1;
+                                      UBYTE *p = content;
+                                      while (*p ||
+                                             (p > content && p[-1] == ',')) {
+                                        while (*p == ' ' || *p == '\t')
+                                          p++;
+                                        UBYTE *s1 = p;
+                                        int nest = 0;
+                                        UBYTE quote = 0;
+                                        while (*p && (nest > 0 || quote != 0 ||
+                                                      *p != ',')) {
+                                          if (quote) {
+                                            if (*p == quote)
+                                              quote = 0;
+                                          } else if (*p == '\'' || *p == '\"') {
+                                            quote = *p;
+                                          } else if (*p == '(' || *p == '[' ||
+                                                     *p == '{') {
+                                            nest++;
+                                          } else if (*p == ')' || *p == ']' ||
+                                                     *p == '}') {
+                                            if (nest > 0)
+                                              nest--;
+                                          }
+                                          p++;
+                                        }
+                                        UBYTE *e1 = p;
+                                        while (e1 > s1 && (e1[-1] == ' ' ||
+                                                           e1[-1] == '\t'))
+                                          e1--;
+                                        if (slen == (e1 - s1) &&
+                                            strncmp((char *)s1, (char *)search,
+                                                    slen) == 0) {
+                                          found = curr;
+                                          break;
+                                        }
+                                        if (*p == ',') {
+                                          p++;
+                                          curr++;
+                                        } else
+                                          break;
+                                      }
+                                      UBYTE valbuf[32];
+                                      sprintf((char *)valbuf, "%d", found);
+                                      buf = (UBYTE *)Malloc1(
+                                          strlen((char *)valbuf) + 1,
+                                          "stream->buffer");
+                                      strcpy((char *)buf, (char *)valbuf);
+                                      if (indbuf != numbuf)
+                                        M_free(indbuf, "index_buf");
+                                      goto push_stream;
+                                    }
+                                    if (colon) {
+                                      *colon = 0;
+                                      if (indbuf[0] != 0)
+                                        PreEval(indbuf, &start_idx);
+                                      if (colon[1] != 0)
+                                        PreEval(colon + 1, &end_idx);
+                                    } else {
+                                      PreEval(indbuf, &start_idx);
+                                      end_idx = start_idx;
+                                    }
+                                    if (indbuf != numbuf)
+                                      M_free(indbuf, "index_buf");
+                                    UBYTE *elem = content;
+                                    int count = 1;
+                                    if (start_idx == 0 && colon == 0) {
+                                      int total_count = 0;
+                                      UBYTE *p = content;
+                                      if (*p) {
+                                        total_count = 1;
+                                        int nest = 0;
+                                        UBYTE quote = 0;
+                                        while (*p) {
+                                          if (quote) {
+                                            if (*p == quote)
+                                              quote = 0;
+                                          } else if (*p == '\'' || *p == '\"') {
+                                            quote = *p;
+                                          } else if (*p == '(' || *p == '[' ||
+                                                     *p == '{') {
+                                            nest++;
+                                          } else if (*p == ')' || *p == ']' ||
+                                                     *p == '}') {
+                                            if (nest > 0)
+                                              nest--;
+                                          } else if (*p == ',' && nest == 0) {
+                                            total_count++;
+                                          }
+                                          p++;
+                                        }
+                                      }
+                                      UBYTE valbuf[32];
+                                      sprintf((char *)valbuf, "%d",
+                                              total_count);
+                                      buf = (UBYTE *)Malloc1(
+                                          strlen((char *)valbuf) + 1,
+                                          "stream->buffer");
+                                      strcpy((char *)buf, (char *)valbuf);
+                                    } else if (end_idx != -1 &&
+                                               start_idx > end_idx) {
+                                      buf =
+                                          (UBYTE *)Malloc1(1, "stream->buffer");
+                                      buf[0] = 0;
+                                    } else {
+                                      int nest = 0;
+                                      UBYTE quote = 0;
+                                      while (count < start_idx && *elem) {
+                                        if (quote) {
+                                          if (*elem == quote)
+                                            quote = 0;
+                                        } else if (*elem == '\'' ||
+                                                   *elem == '\"') {
+                                          quote = *elem;
+                                        } else if (*elem == '(' ||
+                                                   *elem == '[' ||
+                                                   *elem == '{') {
+                                          nest++;
+                                        } else if (*elem == ')' ||
+                                                   *elem == ']' ||
+                                                   *elem == '}') {
+                                          if (nest > 0)
+                                            nest--;
+                                        } else if (*elem == ',' && nest == 0) {
+                                          count++;
+                                        }
+                                        elem++;
+                                      }
+                                      if (count == start_idx && *elem) {
+                                        while (*elem == ' ' || *elem == '\t')
+                                          elem++;
+                                        UBYTE *start_ptr = elem;
+                                        nest = 0;
+                                        quote = 0;
+                                        while (*elem &&
+                                               (end_idx == -1 ||
+                                                count < end_idx || nest > 0 ||
+                                                quote != 0 || *elem != ',')) {
+                                          if (quote) {
+                                            if (*elem == quote)
+                                              quote = 0;
+                                          } else if (*elem == '\'' ||
+                                                     *elem == '\"') {
+                                            quote = *elem;
+                                          } else if (*elem == '(' ||
+                                                     *elem == '[' ||
+                                                     *elem == '{') {
+                                            nest++;
+                                          } else if (*elem == ')' ||
+                                                     *elem == ']' ||
+                                                     *elem == '}') {
+                                            if (nest > 0)
+                                              nest--;
+                                          } else if (*elem == ',' &&
+                                                     nest == 0 && quote == 0) {
+                                            count++;
+                                          }
+                                          elem++;
+                                        }
+                                        if (end_idx != -1 && count == end_idx &&
+                                            *elem == ',' && nest == 0 &&
+                                            quote == 0) {
+                                        } else if (end_idx != -1 &&
+                                                   count == end_idx) {
+                                          while (*elem &&
+                                                 (nest > 0 || quote != 0 ||
+                                                  *elem != ',')) {
+                                            if (quote) {
+                                              if (*elem == quote)
+                                                quote = 0;
+                                            } else if (*elem == '\'' ||
+                                                       *elem == '\"') {
+                                              quote = *elem;
+                                            } else if (*elem == '(' ||
+                                                       *elem == '[' ||
+                                                       *elem == '{') {
+                                              nest++;
+                                            } else if (*elem == ')' ||
+                                                       *elem == ']' ||
+                                                       *elem == '}') {
+                                              if (nest > 0)
+                                                nest--;
+                                            }
+                                            elem++;
+                                          }
+                                        }
+                                        len = elem - start_ptr;
+                                        while (len > 0 &&
+                                               (start_ptr[len - 1] == ' ' ||
+                                                start_ptr[len - 1] == '\t'))
+                                          len--;
+                                        buf = (UBYTE *)Malloc1(
+                                            len + 1, "stream->buffer");
+                                        for (int k = 0; k < len; k++)
+                                          buf[k] = start_ptr[k];
+                                        buf[len] = 0;
+                                      } else {
+                                        buf = (UBYTE *)Malloc1(
+                                            1, "stream->buffer");
+                                        buf[0] = 0;
+                                      }
+                                    }
+                                  push_stream:
+                                    stream = OpenStream(buf, PRECALCSTREAM, 0,
+                                                        raiselow);
+                                    if (stream == 0) {
+                                      M_free(buf, "stream->buffer");
+                                      MesPrint("Error opening stream");
+                                      Terminate(-1);
+                                    }
+                                    c = GetInput();
+                                    goto endofloop;
+                                  }
+                                }
+                                if ( *s == '-' && s[1] == '-' && s[2] == 0 )
 					raiselow = PRELOWERAFTER;
 				else if ( *s == '+' && s[1] == '+' && s[2] == 0 )
 					raiselow = PRERAISEAFTER;
@@ -1407,7 +1761,9 @@ dodollar:		s = sstart;
 			cp = *t; *t = 0;
 			if ( ( bralevel == 0 )
 				&& ( ( StrICmp(AP.preStart,(UBYTE *)"call") == 0 )
-				|| ( StrICmp(AP.preStart,(UBYTE *)"do") == 0 ) ) ) {
+				|| ( StrICmp(AP.preStart,(UBYTE *)"do") == 0 )
+				|| ( StrICmp(AP.preStart,(UBYTE *)"sum") == 0 )
+				|| ( StrICmp(AP.preStart,(UBYTE *)"prod") == 0 ) ) ) {
 				AP.AllowDelay = 1;
 				oldstream = AC.CurrentStream;
 			}
@@ -2847,7 +3203,7 @@ improper:
 	AP.PreIfLevel = loop->PreIfLevel;
 	AP.PreSwitchLevel = loop->PreSwitchLevel;
 
-	return(DoEnddo(s));
+	return(DoEnddo_internal(s, loop->loopMode));
 }
 
 /*
@@ -2861,7 +3217,11 @@ improper:
 		#do i = expression      One by one all terms of the expression
 */
 
-int DoDo(UBYTE *s)
+int DoDo(UBYTE *s) { return DoDo_internal(s, 0); }
+int DoSum(UBYTE *s) { return DoDo_internal(s, 1); }
+int DoProd(UBYTE *s) { return DoDo_internal(s, 2); }
+
+static int DoDo_internal(UBYTE *s, int mode)
 {
 	GETIDENTITY
 	UBYTE *t, c, *u, *uu;
@@ -2869,26 +3229,29 @@ int DoDo(UBYTE *s)
 	WORD expnum;
 	LONG linenum  = AC.CurrentStream->linenumber;
 	int oldNoShowInput = AC.NoShowInput, i, oldpreassignflag;
+	const char *lname, *ename;
+	int pretype;
+
+	if ( mode == 1 )      { lname = "sum";  ename = "endsum";  pretype = PRETYPESUM; }
+	else if ( mode == 2 ) { lname = "prod"; ename = "endprod"; pretype = PRETYPEPROD; }
+	else                  { lname = "do";   ename = "enddo";   pretype = PRETYPEDO; }
 
 	if ( ( AP.PreSwitchModes[AP.PreSwitchLevel] != EXECUTINGPRESWITCH )
 	|| ( AP.PreIfStack[AP.PreIfLevel] != EXECUTINGIF ) ) {
-		if ( PreSkip((UBYTE *)"do",(UBYTE *)"enddo",1) ) return(-1);
+		if ( PreSkip((UBYTE *)lname,(UBYTE *)ename,1) ) return(-1);
 		return(0);
 	}
 
-/*
-	if ( AP.PreSwitchModes[AP.PreSwitchLevel] != EXECUTINGPRESWITCH ) return(0);
-	if ( AP.PreIfStack[AP.PreIfLevel] != EXECUTINGIF ) return(0);
-*/
-	AddToPreTypes(PRETYPEDO);
+	AddToPreTypes(pretype);
  
 	loop = (DOLOOP *)FromList(&AP.LoopList);
 	loop->firstdollar = loop->lastdollar = loop->incdollar = -1;
 	loop->NumPreTypes = AP.NumPreTypes-1;
 	loop->PreIfLevel = AP.PreIfLevel;
 	loop->PreSwitchLevel = AP.PreSwitchLevel;
+	loop->loopMode = mode;
 	AC.NoShowInput = 1;
-	if ( PreLoad(&(loop->p),(UBYTE *)"do",(UBYTE *)"enddo",1,"doloop") ) return(-1);
+	if ( PreLoad(&(loop->p),(UBYTE *)lname,(UBYTE *)ename,1,"doloop") ) return(-1);
 	AC.NoShowInput = oldNoShowInput;
 	loop->NoShowInput = AC.NoShowInput;
 /*
@@ -3059,7 +3422,7 @@ int DoDo(UBYTE *s)
 	loop->startlinenumber = linenum;
 	PutPreVar(loop->name,(UBYTE *)"0",0,0);			
 	loop->firstloopcall = 1;
-	return(DoEnddo(s));
+	return(DoEnddo_internal(s, mode));
 illname:;
 	MesPrint("@Improper name for do loop variable");
 	return(-1);
@@ -3128,6 +3491,8 @@ static int ExitDoLoops(int levels, const char *instruction)
 			AC.CurrentStream = CloseStream(AC.CurrentStream);
 		}
 		while ( AP.PreTypes[AP.NumPreTypes] != PRETYPEDO
+		&& AP.PreTypes[AP.NumPreTypes] != PRETYPESUM
+		&& AP.PreTypes[AP.NumPreTypes] != PRETYPEPROD
 		&& AP.PreTypes[AP.NumPreTypes] != PRETYPEPROCEDURE ) AP.NumPreTypes--;
 		if ( AC.CurrentStream->type == PREREADSTREAM3
 		|| AP.PreTypes[AP.NumPreTypes] == PRETYPEPROCEDURE ) {
@@ -3228,27 +3593,54 @@ int DoElseif(UBYTE *s)
 
 int DoEnddo(UBYTE *s)
 {
+	if ( NumDoLoops > 0 && DoLoops[NumDoLoops-1].loopMode != 0 ) {
+		MesPrint("@%#enddo does not match the corresponding loop type");
+		return(-1);
+	}
+	return DoEnddo_internal(s, 0);
+}
+
+int DoEndsum(UBYTE *s)
+{
+	if ( NumDoLoops > 0 && DoLoops[NumDoLoops-1].loopMode != 1 ) {
+		MesPrint("@%#endsum does not match the corresponding loop type");
+		return(-1);
+	}
+	return DoEnddo_internal(s, 1);
+}
+
+int DoEndprod(UBYTE *s)
+{
+	if ( NumDoLoops > 0 && DoLoops[NumDoLoops-1].loopMode != 2 ) {
+		MesPrint("@%#endprod does not match the corresponding loop type");
+		return(-1);
+	}
+	return DoEnddo_internal(s, 2);
+}
+
+static int DoEnddo_internal(UBYTE *s, int mode)
+{
 	GETIDENTITY
 	DOLOOP *loop;
 	UBYTE *t, *tt, *value, numstr[16];
 	LONG xval;
 	int xsign, retval;
+	int pretype;
 	DUMMYUSE(s);
 	if ( AP.PreSwitchModes[AP.PreSwitchLevel] != EXECUTINGPRESWITCH ) return(0);
 	if ( AP.PreIfStack[AP.PreIfLevel] != EXECUTINGIF ) return(0);
-/*
-	if ( AP.PreSwitchModes[AP.PreSwitchLevel] != EXECUTINGPRESWITCH ||
-		AP.PreIfStack[AP.PreIfLevel] != EXECUTINGIF ) {
-		if ( AP.PreTypes[AP.NumPreTypes] == PRETYPEDO ) AP.NumPreTypes--;
-		else { MessPreNesting(3); return(-1); }
-		return(0);
-	}
-*/
+
+	if ( mode == 1 )      pretype = PRETYPESUM;
+	else if ( mode == 2 ) pretype = PRETYPEPROD;
+	else                  pretype = PRETYPEDO;
+
 	if ( NumDoLoops <= 0 ) {
-		MesPrint("@%#enddo without %#do");
+		if ( mode == 1 )      MesPrint("@%#endsum without %#sum");
+		else if ( mode == 2 ) MesPrint("@%#endprod without %#prod");
+		else                  MesPrint("@%#enddo without %#do");
 		return(1);
 	}
-	if ( AP.PreTypes[AP.NumPreTypes] != PRETYPEDO ) { MessPreNesting(4); return(-1); }
+	if ( AP.PreTypes[AP.NumPreTypes] != pretype ) { MessPreNesting(4); return(-1); }
 	loop = &(DoLoops[NumDoLoops-1]);
 	if ( !loop->firstloopcall ) AC.CurrentStream = CloseStream(AC.CurrentStream);
 
@@ -3351,14 +3743,45 @@ int DoEnddo(UBYTE *s)
 		PutPreVar(loop->name,t,0,1);	/* We overwrite the definition */
 		M_free(t,"dollar");
 	}
+
 	if ( loop->firstloopcall ) OpenStream(loop->contents,PREREADSTREAM2,0,PRENOACTION);
 	else OpenStream(loop->contents,PREREADSTREAM,0,PRENOACTION);
 	AC.CurrentStream->prevline   =
 	AC.CurrentStream->linenumber = loop->startlinenumber;
 	AC.CurrentStream->eqnum = 0;
+
+	/* Insert separators for sum/prod modes (on top of content stream) */
+	if ( mode == 1 && !loop->firstloopcall ) {
+		/* Sum: insert + between iterations */
+		OpenStream((UBYTE *)" +\n",PREREADSTREAM,0,PRENOACTION);
+	}
+	else if ( mode == 2 ) {
+		if ( loop->firstloopcall ) {
+			/* Prod: open first parenthesis */
+			OpenStream((UBYTE *)" (\n",PREREADSTREAM,0,PRENOACTION);
+		}
+		else {
+			/* Prod: close prev paren, multiply, open next */
+			OpenStream((UBYTE *)"\n) * (\n",PREREADSTREAM,0,PRENOACTION);
+		}
+	}
+
 	loop->firstloopcall = 0;
 	return(0);
 finish:;
+	/* Handle empty-loop defaults for sum/prod */
+	if ( mode == 1 && loop->firstloopcall ) {
+		/* Sum empty range: output 0 */
+		OpenStream((UBYTE *)"0",PREREADSTREAM2,0,PRENOACTION);
+	}
+	else if ( mode == 2 && loop->firstloopcall ) {
+		/* Prod empty range: output 1 */
+		OpenStream((UBYTE *)"1",PREREADSTREAM2,0,PRENOACTION);
+	}
+	else if ( mode == 2 && !loop->firstloopcall ) {
+		/* Prod non-empty finish: closing paren */
+		OpenStream((UBYTE *)"\n)\n",PREREADSTREAM2,0,PRENOACTION);
+	}
 	NumDoLoops--;
 	retval = DoUndefine(loop->name);
 	M_free(loop->p.buffer,"loop->p.buffer");
@@ -5436,7 +5859,7 @@ void AddToPreTypes(int type)
 
 void MessPreNesting(int par)
 {
-	MesPrint("@(%d)Illegal nesting of %#if, %#do, %#procedure and/or %#switch",par);
+	MesPrint("@(%d)Illegal nesting of %#if, %#do, %#sum, %#prod, %#procedure and/or %#switch",par);
 }
 
 /*
