@@ -778,7 +778,7 @@ between the backquote and the quote. Another example can be found with the
 
 \#do lvar = nameofexpression
  
-\noindent See also enddo (\ref{preenddo})
+\noindent See also enddo (\ref{preenddo}), sum (\ref{presum}), prod (\ref{preprod})
 
 \noindent The \#do\index{\#do} instruction\index{do loop} needs a matching 
 \#enddo\index{\#enddo} instruction. All code in-between these two 
@@ -963,7 +963,9 @@ Example
 \noindent See also do (\ref{predo})
 
 \noindent Used to\index{\#enddo} terminate\index{terminate} a preprocessor 
-do\index{do loop} loop. See the \#do\index{\#do} instruction.
+do\index{do loop} loop. See the \#do\index{\#do} instruction. The \#enddo 
+instruction must match a \#do instruction; it cannot be used to close a
+\#sum or \#prod loop.
 
 %--#] enddo : 
 %--#[ endfloat :
@@ -1038,6 +1040,40 @@ inside the procedure and all parameters of the call of the procedure will
 become undefined.
 
 %--#] endprocedure : 
+%--#[ endprod :
+ 
+\section{\#endprod}
+\label{preendprod}
+
+\noindent Syntax:
+
+\#endprod
+ 
+\noindent See also prod (\ref{preprod})
+
+\noindent Used to\index{\#endprod} terminate\index{terminate} a preprocessor 
+prod\index{prod loop} loop. See the \#prod\index{\#prod} instruction. The 
+\#endprod instruction must match a \#prod instruction; it cannot be used to 
+close a \#do or \#sum loop.
+
+%--#] endprod : 
+%--#[ endsum :
+ 
+\section{\#endsum}
+\label{preendsum}
+
+\noindent Syntax:
+
+\#endsum
+ 
+\noindent See also sum (\ref{presum})
+
+\noindent Used to\index{\#endsum} terminate\index{terminate} a preprocessor 
+sum\index{sum loop} loop. See the \#sum\index{\#sum} instruction. The 
+\#endsum instruction must match a \#sum instruction; it cannot be used to 
+close a \#do or \#prod loop.
+
+%--#] endsum : 
 %--#[ endswitch :
 
 \section{\#endswitch}
@@ -1547,6 +1583,58 @@ Example:
 \end{verbatim}
 
 %--#] printtimes : 
+%--#[ prod :
+
+\section{\#prod}
+\label{preprod}
+
+\noindent Syntax:
+
+\#prod lvar = i1,i2
+
+\#prod lvar = i1,i2,i3
+
+\#prod lvar = $\{$string1,...,stringn$\}$
+ 
+\noindent See also endprod (\ref{preendprod}), do (\ref{predo}), 
+                    sum (\ref{presum})
+
+\noindent The \#prod\index{\#prod} instruction\index{prod loop} is a 
+variant of the \#do\index{\#do} loop that is designed for constructing 
+products. It needs a matching \#endprod\index{\#endprod} instruction. 
+The syntax of the loop parameters (numerical ranges and listed loops) is 
+the same as for the \#do instruction.
+
+The key difference from a regular \#do loop is that the output of each 
+iteration is wrapped in parentheses and the iterations are separated by 
+multiplication signs. Hence the result is a product of terms rather than 
+a simple concatenation.
+
+If the loop range is empty (e.g.\ the end value is less than the start 
+value), the \#prod loop produces the text \verb:1:, which is the 
+identity element for multiplication.
+
+Example:
+\begin{verbatim}
+    S x;
+    Local F =
+    #prod i = 1, 3
+    (`i'+x)
+    #endprod
+    ;
+    Print;
+    .end
+
+   F =
+      6 + 11*x + 6*x^2 + x^3;
+\end{verbatim}
+Here the \#prod loop produces \verb:(1+x)*(2+x)*(3+x): which FORM then 
+expands into the polynomial $6 + 11x + 6x^2 + x^3$.
+
+\#prod loops can be nested with each other and with \#do and \#sum loops, 
+following the usual nesting rules.
+
+%--#] prod : 
 %--#[ procedure :
 
 \section{\#procedure}
@@ -2015,6 +2103,73 @@ at the end of the current module. In some cases this can significantly reduce
 \noindent See also endfloat (\ref{preendfloat}) and chapter~\ref{floatingpoint} on the floating point capability.
  
 %--#]  startfloat : 
+%--#[ sum :
+
+\section{\#sum}
+\label{presum}
+
+\noindent Syntax:
+
+\#sum lvar = i1,i2
+
+\#sum lvar = i1,i2,i3
+
+\#sum lvar = $\{$string1,...,stringn$\}$
+ 
+\noindent See also endsum (\ref{preendsum}), do (\ref{predo}), 
+                    prod (\ref{preprod})
+
+\noindent The \#sum\index{\#sum} instruction\index{sum loop} is a variant 
+of the \#do\index{\#do} loop that is designed for constructing sums. It 
+needs a matching \#endsum\index{\#endsum} instruction. The syntax of the 
+loop parameters (numerical ranges and listed loops) is the same as for 
+the \#do instruction.
+
+The key difference from a regular \#do loop is that a \verb:+: sign is 
+automatically inserted between each iteration. Hence the result is a sum 
+of terms rather than a simple concatenation.
+
+If the loop range is empty (e.g.\ the end value is less than the start 
+value), the \#sum loop produces the text \verb:0:, which is the identity 
+element for addition.
+
+Example:
+\begin{verbatim}
+    S x;
+    Local F =
+    #sum i = 1, 4
+    `i'*x^`i'
+    #endsum
+    ;
+    Print;
+    .end
+
+   F =
+      x + 2*x^2 + 3*x^3 + 4*x^4;
+\end{verbatim}
+Here the \#sum loop produces \verb:1*x^1+2*x^2+3*x^3+4*x^4: which FORM 
+then evaluates.
+
+\#sum loops can be nested with each other and with \#do and \#prod loops, 
+following the usual nesting rules. A common pattern is to use \#sum 
+together with \#prod:
+\begin{verbatim}
+    S x;
+    Local F =
+    #sum j = 1, 2
+    #prod i = 1, `j'
+    (x+`i')
+    #endprod
+    #endsum
+    ;
+    Print;
+    .end
+
+   F =
+      3 + 4*x + x^2;
+\end{verbatim}
+
+%--#] sum : 
 %--#[ switch :
 
 \section{\#switch}
@@ -2353,6 +2508,8 @@ and use the \verb:fun = fun +: trick to continue.
 \section{Some remarks}
 It should be noted that the various constructions like 
 \#do\index{\#do}/\#enddo\index{\#enddo}, 
+\#sum\index{\#sum}/\#endsum\index{\#endsum}, 
+\#prod\index{\#prod}/\#endprod\index{\#endprod}, 
 \#procedure\index{\#procedure}/\#endprocedure\index{\#endprocedure}, 
 \#switch\index{\#switch}/\#endswitch\index{\#endswitch} and 
 \#if\index{\#if}/\#endif\index{\#endif} all 
