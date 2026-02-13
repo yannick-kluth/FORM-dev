@@ -150,6 +150,8 @@
 #define PRETYPEPROCEDURE 3
 #define PRETYPESWITCH 4
 #define PRETYPEINSIDE 5
+#define PRETYPESUM 6
+#define PRETYPEPROD 7
 
 /*
 	Type of statement. Used to make sure that the statements are in proper order
