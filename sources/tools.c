@@ -61,7 +61,10 @@
 */
 
 #include "form3.h"
- 
+#ifdef UNIX
+#include <sys/stat.h>
+#endif
+
 FILES **filelist;
 int numinfilelist = 0;
 int filelistsize = 0;
@@ -776,6 +779,26 @@ STREAM *CloseStream(STREAM *stream)
 	else return(0);
 }
 
+void MakePath(char *name) {
+  char path[1024];
+  char *p;
+  StrCopy((UBYTE *)name, (UBYTE *)path);
+  for (p = path + 1; *p; p++) {
+    if (*p == SEPARATOR || *p == ALTSEPARATOR) {
+      char tmp = *p;
+      *p = 0;
+#ifdef UNIX
+      mkdir(path, 0755);
+#else
+#ifdef WINDOWS
+      CreateDirectory(path, NULL);
+#endif
+#endif
+      *p = tmp;
+    }
+  }
+}
+
 /*
  		#] CloseStream : 
  		#[ CreateStream :
@@ -1006,7 +1029,8 @@ int OpenAddFile(char *name)
 	FILES *f;
 	int i;
 	POSITION scrpos;
-	if ( ( f = Uopen(name,"a+b") ) == 0 ) return(-1);
+        MakePath(name);
+        if ( ( f = Uopen(name,"a+b") ) == 0 ) return(-1);
 /*	Usetbuf(f,0); */
 	i = CreateHandle();
 	RWLOCKW(AM.handlelock);
@@ -1046,8 +1070,10 @@ int CreateFile(char *name)
 {
 	FILES *f;
 	int i;
-	if ( ( f = Uopen(name,"w+b") ) == 0 ) return(-1);
-	i = CreateHandle();
+        MakePath(name);
+        if ((f = Uopen(name, "w+b")) == 0)
+          return (-1);
+        i = CreateHandle();
 	RWLOCKW(AM.handlelock);
 	filelist[i] = f;
 	UNRWLOCK(AM.handlelock);

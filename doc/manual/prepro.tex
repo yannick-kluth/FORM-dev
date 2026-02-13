@@ -425,7 +425,8 @@ the comma must be specified between double quotes as in
 
 \noindent Opens\index{\#append} the named file for writing. The file will 
 be positioned at the end. The next \#write\index{\#write} instruction will 
-add to it.
+add to it. If the path to the file contains directories that do not exist, 
+they will be created automatically.
 
 %--#] append : 
 %--#[ appendpath :
@@ -708,7 +709,7 @@ If the value is zero the instruction has no effect.
 
 \noindent Syntax:
 
-\#append $<$filename$>$
+\#create $<$filename$>$
  
 \noindent See also write (\ref{prewrite}),
             close (\ref{preclose}), append (\ref{preappend}),
@@ -718,7 +719,9 @@ If the value is zero the instruction has no effect.
 existed already, its previous contents will be lost. The next 
 \#write\index{\#write} instruction will add to it. In principle this 
 instruction is not needed, because the \#write instruction would create the 
-file if it had not been opened yet at the moment of writing.
+file if it had not been opened yet at the moment of writing. If the path to 
+the file contains directories that do not exist, they will be created 
+automatically.
 
 %--#] create : 
 %--#[ default :
@@ -2426,7 +2429,8 @@ already, the specified output will be added to the file. If it is not open
 yet it will be opened. Any previous contents will be lost. This would be 
 equivalent to using the \#create\index{\#create} instruction first. If 
 output has to be added to an existing file, the \#append\index{\#append} 
-instruction should be used first.
+instruction should be used first. If the path to the file contains 
+directories that do not exist, they will be created automatically.
 
 The format\index{format string} string is like a format string in the 
 language C\index{C}. This means 
