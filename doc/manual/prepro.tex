@@ -153,6 +153,54 @@ After this it will become input.
 Note that these macro names are not case sensitive.
 
 %--#] The preprocessor variables : 
+%--#[ List support and string manipulation :
+
+\section{List support and string manipulation}
+\label{listmanipulation}
+
+\noindent Preprocessor variables can be treated as lists of comma-separated items. 
+Various operations are available for extracting elements, slicing, determining 
+the length, and searching for items. Additionally, a string replacement feature 
+is available. These operations are invoked by appending square brackets with 
+specific syntax to the preprocessor variable name.
+
+\begin{description}
+\item[{var[n]}] Returns the n-th element of the list. Indexing starts at 1. If 
+the index is greater than the number of elements, an empty string is 
+returned.
+\item[{var[0]}] Returns the total number of elements in the list.
+\item[{var[n:m]}] Returns a sublist starting from the n-th element up to and 
+including the m-th element. If n is greater than m, an empty string is 
+returned. 
+If m is omitted (as in [n:]), all elements from n to the end are returned. 
+If n is omitted (as in [:m]), elements from the start up to m are returned.
+\item[{var[?string]}] Returns the 1-based index of the first occurrence of 
+`string' in the list. If the string is not found, 0 is returned.
+\item[{var[s/old/new/]}] Performs a string replacement, replacing all 
+occurrences of `old' with `new'. Any character can be used as a delimiter if it 
+is not present in `old' or `new' (e.g., [s!old!new!]).
+\end{description}
+
+\noindent All list operations are bracket-aware. This means that commas inside 
+matched pairs of parentheses \verb:():, square brackets \verb:[]:, or curly 
+brackets \verb:{}: are not treated as element separators. This allows 
+elements to be function calls or other nested structures.
+
+Example:
+\begin{verbatim}
+    #define mylist "f(a,b), [1,2], c"
+    Local F1 = `mylist[1]';
+    Local F2 = `mylist[2]';
+    Local L  = `mylist[0]';
+\end{verbatim}
+will result in:
+\begin{verbatim}
+    Local F1 = f(a,b);
+    Local F2 = [1,2];
+    Local L  = 3;
+\end{verbatim}
+
+%--#] List support and string manipulation : 
 %--#[ Calculator :
 \section{The preprocessor calculator}
 \label{calculator}
