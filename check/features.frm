@@ -3305,3 +3305,258 @@ Local test = diagrams_(PHI3,{phi},{phi},{q1,q2},{q1,p2},1,0);
 #pend_if mpi?
 assert runtime_error?('Invalid repeated momentum in diagrams_: q1')
 *--#] diagrams_err_8 :
+*--#[ SumLoop_1 :
+* Basic #sum with numerical range
+CF f;
+Local F =
+#sum i = 1, 4
+f(`i')
+#endsum
+;
+Print;
+.end
+assert succeeded?
+assert result("F") =~ expr("f(1) + f(2) + f(3) + f(4)")
+*--#] SumLoop_1 :
+*--#[ SumLoop_2 :
+* Empty #sum range (end < start) should give 0
+CF f;
+Local F =
+#sum i = 5, 3
+f(`i')
+#endsum
+;
+Print;
+.end
+assert succeeded?
+assert result("F") =~ expr("0")
+*--#] SumLoop_2 :
+*--#[ SumLoop_3 :
+* Single-element #sum (start == end)
+CF f;
+Local F =
+#sum i = 7, 7
+f(`i')
+#endsum
+;
+Print;
+.end
+assert succeeded?
+assert result("F") =~ expr("f(7)")
+*--#] SumLoop_3 :
+*--#[ SumLoop_4 :
+* #sum with listed items
+S a, b, c;
+Local F =
+#sum i = {a,b,c}
+`i'
+#endsum
+;
+Print;
+.end
+assert succeeded?
+assert result("F") =~ expr("c + b + a")
+*--#] SumLoop_4 :
+*--#[ SumLoop_5 :
+* #sum with expressions in body
+S x;
+Local F =
+#sum i = 1, 3
+`i'*x^`i'
+#endsum
+;
+Print;
+.end
+assert succeeded?
+assert result("F") =~ expr("x + 2*x^2 + 3*x^3")
+*--#] SumLoop_5 :
+*--#[ SumLoop_6 :
+* Nested #sum inside #sum
+CF f;
+Local F =
+#sum i = 1, 2
+#sum j = 1, 2
+f(`i',`j')
+#endsum
+#endsum
+;
+Print;
+.end
+assert succeeded?
+assert result("F") =~ expr("f(1,1) + f(1,2) + f(2,1) + f(2,2)")
+*--#] SumLoop_6 :
+*--#[ SumLoop_7 :
+* #sum inside #do loop
+CF f;
+Local F = 0;
+#do k = 1, 2
+Local F`k' =
+#sum i = 1, 3
+f(`i')
+#endsum
+;
+#enddo
+Print;
+.end
+assert succeeded?
+assert result("F1") =~ expr("f(1) + f(2) + f(3)")
+assert result("F2") =~ expr("f(1) + f(2) + f(3)")
+*--#] SumLoop_7 :
+*--#[ ProdLoop_1 :
+* Basic #prod with numerical range
+S x;
+Local F =
+#prod i = 1, 3
+(`i'+x)
+#endprod
+;
+Print;
+.end
+assert succeeded?
+assert result("F") =~ expr("6 + 11*x + 6*x^2 + x^3")
+*--#] ProdLoop_1 :
+*--#[ ProdLoop_2 :
+* Empty #prod range (end < start) should give 1
+CF f;
+Local F =
+#prod i = 5, 3
+f(`i')
+#endprod
+;
+Print;
+.end
+assert succeeded?
+assert result("F") =~ expr("1")
+*--#] ProdLoop_2 :
+*--#[ ProdLoop_3 :
+* Single-element #prod (start == end)
+S x;
+Local F =
+#prod i = 3, 3
+(`i'+x)
+#endprod
+;
+Print;
+.end
+assert succeeded?
+assert result("F") =~ expr("3 + x")
+*--#] ProdLoop_3 :
+*--#[ ProdLoop_4 :
+* #prod with more complex body
+S x;
+Local F =
+#prod i = 1, 4
+(x+`i')
+#endprod
+;
+Print;
+.end
+assert succeeded?
+assert result("F") =~ expr("24 + 50*x + 35*x^2 + 10*x^3 + x^4")
+*--#] ProdLoop_4 :
+*--#[ ProdLoop_5 :
+* Nested #prod inside #sum
+S x;
+Local F =
+#sum j = 1, 2
+#prod i = 1, `j'
+(x+`i')
+#endprod
+#endsum
+;
+Print;
+.end
+assert succeeded?
+assert result("F") =~ expr("3 + 4*x + x^2")
+*--#] ProdLoop_5 :
+*--#[ ProdLoop_6 :
+* Nested #prod inside #prod
+S x, y;
+Local F =
+#prod j = 1, 2
+(
+#sum i = 1, 2
+`i'*x
+#endsum
++ `j'*y)
+#endprod
+;
+Print;
+.end
+assert succeeded?
+assert result("F") =~ expr("2*y^2 + 9*x*y + 9*x^2")
+*--#] ProdLoop_6 :
+*--#[ SumProd_doinsidesum :
+* #do inside #sum (should work the same as body)
+CF f;
+S x;
+Local F =
+#sum i = 1, 3
+`i'*x
+#endsum
+;
+Print;
+.end
+assert succeeded?
+assert result("F") =~ expr("6*x")
+*--#] SumProd_doinsidesum :
+*--#[ SumLoop_err_1 :
+* #enddo used with #sum should error (detected at parse level as missing #endsum)
+CF f;
+Local F =
+#sum i = 1, 3
+f(`i')
+#enddo
+;
+Print;
+.end
+assert stdout =~ /Missing #endsum/
+*--#] SumLoop_err_1 :
+*--#[ SumLoop_err_2 :
+* #endsum used with #do should error (detected at parse level as missing #enddo)
+CF f;
+Local F =
+#do i = 1, 3
+f(`i')
+#endsum
+;
+Print;
+.end
+assert stdout =~ /Missing #enddo/
+*--#] SumLoop_err_2 :
+*--#[ ProdLoop_err_1 :
+* #enddo used with #prod should error (detected at parse level as missing #endprod)
+CF f;
+Local F =
+#prod i = 1, 3
+f(`i')
+#enddo
+;
+Print;
+.end
+assert stdout =~ /Missing #endprod/
+*--#] ProdLoop_err_1 :
+*--#[ ProdLoop_err_2 :
+* #endprod used with #do should error (detected at parse level as missing #enddo)
+CF f;
+Local F =
+#do i = 1, 3
+f(`i')
+#endprod
+;
+Print;
+.end
+assert stdout =~ /Missing #enddo/
+*--#] ProdLoop_err_2 :
+*--#[ ProdLoop_err_3 :
+* #endprod used with #sum should error (detected at parse level as missing #endsum)
+CF f;
+Local F =
+#sum i = 1, 3
+f(`i')
+#endprod
+;
+Print;
+.end
+assert stdout =~ /Missing #endsum/
+*--#] ProdLoop_err_3 :

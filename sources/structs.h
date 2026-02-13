@@ -894,6 +894,7 @@ typedef struct DoLoOp {
 	WORD NumPreTypes;
 	WORD PreIfLevel;
 	WORD PreSwitchLevel;
+	int loopMode;
 } DOLOOP;
 
 /**
