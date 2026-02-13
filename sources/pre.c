@@ -45,6 +45,8 @@ static UBYTE underscore[2] = {'_',0};
 static PREVAR *ThePreVar = 0;
 
 static int ExitDoLoops(int, const char *);
+static int DoDo_internal(UBYTE *, int);
+static int DoEnddo_internal(UBYTE *, int);
 
 static KEYWORD precommands[] = {
 	 {"add"          , DoPreAdd       , 0, 0}
@@ -77,6 +79,8 @@ static KEYWORD precommands[] = {
 	,{"endinside"    , DoEndInside    , 0, 0}
 	,{"endnamespace" , DoEndNamespace , 0, 0}
 	,{"endprocedure" , DoEndprocedure , 0, 0}
+	,{"endprod"      , DoEndprod      , 0, 0}
+	,{"endsum"       , DoEndsum       , 0, 0}
 	,{"endswitch"    , DoPreEndSwitch , 0, 0}
 	,{"exchange"     , DoPreExchange  , 0, 0}
 	,{"external"     , DoExternal     , 0, 0}
@@ -97,6 +101,7 @@ static KEYWORD precommands[] = {
 	,{"printtimes"   , DoPrePrintTimes, 0, 0}
 	,{"procedure"    , DoProcedure    , 0, 0}
 	,{"procedureextension" , DoPrcExtension   , 0, 0}
+	,{"prod"         , DoProd         , 0, 0}
 	,{"prompt"       , DoPrompt       , 0, 0}
 	,{"redefine"     , DoRedefine     , 0, 0}
 	,{"remove"       , DoPreRemove    , 0, 0}
@@ -114,6 +119,7 @@ static KEYWORD precommands[] = {
 #ifdef WITHFLOAT
     ,{"startfloat"   , DoStartFloat   , 0, 0}
 #endif
+	,{"sum"          , DoSum          , 0, 0}
 	,{"switch"       , DoPreSwitch    , 0, 0}
 	,{"system"       , DoSystem       , 0, 0}
 	,{"terminate"    , DoTerminate    , 0, 0}
@@ -1407,7 +1413,9 @@ dodollar:		s = sstart;
 			cp = *t; *t = 0;
 			if ( ( bralevel == 0 )
 				&& ( ( StrICmp(AP.preStart,(UBYTE *)"call") == 0 )
-				|| ( StrICmp(AP.preStart,(UBYTE *)"do") == 0 ) ) ) {
+				|| ( StrICmp(AP.preStart,(UBYTE *)"do") == 0 )
+				|| ( StrICmp(AP.preStart,(UBYTE *)"sum") == 0 )
+				|| ( StrICmp(AP.preStart,(UBYTE *)"prod") == 0 ) ) ) {
 				AP.AllowDelay = 1;
 				oldstream = AC.CurrentStream;
 			}
@@ -2847,7 +2855,7 @@ improper:
 	AP.PreIfLevel = loop->PreIfLevel;
 	AP.PreSwitchLevel = loop->PreSwitchLevel;
 
-	return(DoEnddo(s));
+	return(DoEnddo_internal(s, loop->loopMode));
 }
 
 /*
@@ -2861,7 +2869,11 @@ improper:
 		#do i = expression      One by one all terms of the expression
 */
 
-int DoDo(UBYTE *s)
+int DoDo(UBYTE *s) { return DoDo_internal(s, 0); }
+int DoSum(UBYTE *s) { return DoDo_internal(s, 1); }
+int DoProd(UBYTE *s) { return DoDo_internal(s, 2); }
+
+static int DoDo_internal(UBYTE *s, int mode)
 {
 	GETIDENTITY
 	UBYTE *t, c, *u, *uu;
@@ -2869,26 +2881,29 @@ int DoDo(UBYTE *s)
 	WORD expnum;
 	LONG linenum  = AC.CurrentStream->linenumber;
 	int oldNoShowInput = AC.NoShowInput, i, oldpreassignflag;
+	const char *lname, *ename;
+	int pretype;
+
+	if ( mode == 1 )      { lname = "sum";  ename = "endsum";  pretype = PRETYPESUM; }
+	else if ( mode == 2 ) { lname = "prod"; ename = "endprod"; pretype = PRETYPEPROD; }
+	else                  { lname = "do";   ename = "enddo";   pretype = PRETYPEDO; }
 
 	if ( ( AP.PreSwitchModes[AP.PreSwitchLevel] != EXECUTINGPRESWITCH )
 	|| ( AP.PreIfStack[AP.PreIfLevel] != EXECUTINGIF ) ) {
-		if ( PreSkip((UBYTE *)"do",(UBYTE *)"enddo",1) ) return(-1);
+		if ( PreSkip((UBYTE *)lname,(UBYTE *)ename,1) ) return(-1);
 		return(0);
 	}
 
-/*
-	if ( AP.PreSwitchModes[AP.PreSwitchLevel] != EXECUTINGPRESWITCH ) return(0);
-	if ( AP.PreIfStack[AP.PreIfLevel] != EXECUTINGIF ) return(0);
-*/
-	AddToPreTypes(PRETYPEDO);
+	AddToPreTypes(pretype);
  
 	loop = (DOLOOP *)FromList(&AP.LoopList);
 	loop->firstdollar = loop->lastdollar = loop->incdollar = -1;
 	loop->NumPreTypes = AP.NumPreTypes-1;
 	loop->PreIfLevel = AP.PreIfLevel;
 	loop->PreSwitchLevel = AP.PreSwitchLevel;
+	loop->loopMode = mode;
 	AC.NoShowInput = 1;
-	if ( PreLoad(&(loop->p),(UBYTE *)"do",(UBYTE *)"enddo",1,"doloop") ) return(-1);
+	if ( PreLoad(&(loop->p),(UBYTE *)lname,(UBYTE *)ename,1,"doloop") ) return(-1);
 	AC.NoShowInput = oldNoShowInput;
 	loop->NoShowInput = AC.NoShowInput;
 /*
@@ -3059,7 +3074,7 @@ int DoDo(UBYTE *s)
 	loop->startlinenumber = linenum;
 	PutPreVar(loop->name,(UBYTE *)"0",0,0);			
 	loop->firstloopcall = 1;
-	return(DoEnddo(s));
+	return(DoEnddo_internal(s, mode));
 illname:;
 	MesPrint("@Improper name for do loop variable");
 	return(-1);
@@ -3128,6 +3143,8 @@ static int ExitDoLoops(int levels, const char *instruction)
 			AC.CurrentStream = CloseStream(AC.CurrentStream);
 		}
 		while ( AP.PreTypes[AP.NumPreTypes] != PRETYPEDO
+		&& AP.PreTypes[AP.NumPreTypes] != PRETYPESUM
+		&& AP.PreTypes[AP.NumPreTypes] != PRETYPEPROD
 		&& AP.PreTypes[AP.NumPreTypes] != PRETYPEPROCEDURE ) AP.NumPreTypes--;
 		if ( AC.CurrentStream->type == PREREADSTREAM3
 		|| AP.PreTypes[AP.NumPreTypes] == PRETYPEPROCEDURE ) {
@@ -3228,27 +3245,54 @@ int DoElseif(UBYTE *s)
 
 int DoEnddo(UBYTE *s)
 {
+	if ( NumDoLoops > 0 && DoLoops[NumDoLoops-1].loopMode != 0 ) {
+		MesPrint("@%#enddo does not match the corresponding loop type");
+		return(-1);
+	}
+	return DoEnddo_internal(s, 0);
+}
+
+int DoEndsum(UBYTE *s)
+{
+	if ( NumDoLoops > 0 && DoLoops[NumDoLoops-1].loopMode != 1 ) {
+		MesPrint("@%#endsum does not match the corresponding loop type");
+		return(-1);
+	}
+	return DoEnddo_internal(s, 1);
+}
+
+int DoEndprod(UBYTE *s)
+{
+	if ( NumDoLoops > 0 && DoLoops[NumDoLoops-1].loopMode != 2 ) {
+		MesPrint("@%#endprod does not match the corresponding loop type");
+		return(-1);
+	}
+	return DoEnddo_internal(s, 2);
+}
+
+static int DoEnddo_internal(UBYTE *s, int mode)
+{
 	GETIDENTITY
 	DOLOOP *loop;
 	UBYTE *t, *tt, *value, numstr[16];
 	LONG xval;
 	int xsign, retval;
+	int pretype;
 	DUMMYUSE(s);
 	if ( AP.PreSwitchModes[AP.PreSwitchLevel] != EXECUTINGPRESWITCH ) return(0);
 	if ( AP.PreIfStack[AP.PreIfLevel] != EXECUTINGIF ) return(0);
-/*
-	if ( AP.PreSwitchModes[AP.PreSwitchLevel] != EXECUTINGPRESWITCH ||
-		AP.PreIfStack[AP.PreIfLevel] != EXECUTINGIF ) {
-		if ( AP.PreTypes[AP.NumPreTypes] == PRETYPEDO ) AP.NumPreTypes--;
-		else { MessPreNesting(3); return(-1); }
-		return(0);
-	}
-*/
+
+	if ( mode == 1 )      pretype = PRETYPESUM;
+	else if ( mode == 2 ) pretype = PRETYPEPROD;
+	else                  pretype = PRETYPEDO;
+
 	if ( NumDoLoops <= 0 ) {
-		MesPrint("@%#enddo without %#do");
+		if ( mode == 1 )      MesPrint("@%#endsum without %#sum");
+		else if ( mode == 2 ) MesPrint("@%#endprod without %#prod");
+		else                  MesPrint("@%#enddo without %#do");
 		return(1);
 	}
-	if ( AP.PreTypes[AP.NumPreTypes] != PRETYPEDO ) { MessPreNesting(4); return(-1); }
+	if ( AP.PreTypes[AP.NumPreTypes] != pretype ) { MessPreNesting(4); return(-1); }
 	loop = &(DoLoops[NumDoLoops-1]);
 	if ( !loop->firstloopcall ) AC.CurrentStream = CloseStream(AC.CurrentStream);
 
@@ -3351,14 +3395,45 @@ int DoEnddo(UBYTE *s)
 		PutPreVar(loop->name,t,0,1);	/* We overwrite the definition */
 		M_free(t,"dollar");
 	}
+
 	if ( loop->firstloopcall ) OpenStream(loop->contents,PREREADSTREAM2,0,PRENOACTION);
 	else OpenStream(loop->contents,PREREADSTREAM,0,PRENOACTION);
 	AC.CurrentStream->prevline   =
 	AC.CurrentStream->linenumber = loop->startlinenumber;
 	AC.CurrentStream->eqnum = 0;
+
+	/* Insert separators for sum/prod modes (on top of content stream) */
+	if ( mode == 1 && !loop->firstloopcall ) {
+		/* Sum: insert + between iterations */
+		OpenStream((UBYTE *)" +\n",PREREADSTREAM,0,PRENOACTION);
+	}
+	else if ( mode == 2 ) {
+		if ( loop->firstloopcall ) {
+			/* Prod: open first parenthesis */
+			OpenStream((UBYTE *)" (\n",PREREADSTREAM,0,PRENOACTION);
+		}
+		else {
+			/* Prod: close prev paren, multiply, open next */
+			OpenStream((UBYTE *)"\n) * (\n",PREREADSTREAM,0,PRENOACTION);
+		}
+	}
+
 	loop->firstloopcall = 0;
 	return(0);
 finish:;
+	/* Handle empty-loop defaults for sum/prod */
+	if ( mode == 1 && loop->firstloopcall ) {
+		/* Sum empty range: output 0 */
+		OpenStream((UBYTE *)"0",PREREADSTREAM2,0,PRENOACTION);
+	}
+	else if ( mode == 2 && loop->firstloopcall ) {
+		/* Prod empty range: output 1 */
+		OpenStream((UBYTE *)"1",PREREADSTREAM2,0,PRENOACTION);
+	}
+	else if ( mode == 2 && !loop->firstloopcall ) {
+		/* Prod non-empty finish: closing paren */
+		OpenStream((UBYTE *)"\n)\n",PREREADSTREAM2,0,PRENOACTION);
+	}
 	NumDoLoops--;
 	retval = DoUndefine(loop->name);
 	M_free(loop->p.buffer,"loop->p.buffer");
@@ -5436,7 +5511,7 @@ void AddToPreTypes(int type)
 
 void MessPreNesting(int par)
 {
-	MesPrint("@(%d)Illegal nesting of %#if, %#do, %#procedure and/or %#switch",par);
+	MesPrint("@(%d)Illegal nesting of %#if, %#do, %#sum, %#prod, %#procedure and/or %#switch",par);
 }
 
 /*
