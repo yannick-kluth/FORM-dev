@@ -645,9 +645,10 @@ higherlevel:
                                           buf[k] = start_ptr[k];
                                         buf[len] = 0;
                                       } else {
-                                        buf = (UBYTE *)Malloc1(
-                                            1, "stream->buffer");
-                                        buf[0] = 0;
+                                        MesPrint(
+                                            "@Out of bounds list access for variable %s",
+                                            namebuf);
+                                        Terminate(-1);
                                       }
                                     }
                                   push_stream:
