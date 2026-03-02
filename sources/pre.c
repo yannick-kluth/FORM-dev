@@ -645,10 +645,9 @@ higherlevel:
                                           buf[k] = start_ptr[k];
                                         buf[len] = 0;
                                       } else {
-                                        MesPrint(
-                                            "@Out of bounds list access for variable %s",
-                                            namebuf);
-                                        Terminate(-1);
+                                        buf = (UBYTE *)Malloc1(
+                                            1, "stream->buffer");
+                                        buf[0] = 0;
                                       }
                                     }
                                   push_stream:
@@ -1580,7 +1579,12 @@ retry:;
 				return(-1);
 			}
 		}
-		while ( *s == ' ' || *s == '\t' || *s == ',' ) s++;
+		if ( StrICmp(key->name,(UBYTE *)"message") == 0 ) {
+			while ( *s == ' ' || *s == '\t' ) s++;
+		}
+		else {
+			while ( *s == ' ' || *s == '\t' || *s == ',' ) s++;
+		}
 		t = s;
 		while ( *t ) t++;
 		while ( ( t[-1] == ';' ) && ( t[-2] != '\\' ) ) {
