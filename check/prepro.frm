@@ -105,3 +105,28 @@
     assert succeeded?
     assert result("F") =~ expr("x*global")
 *--#] Scoping_GlobalDefine_Shadowed :
+
+*--#[ Scoping_GlobalDefine_Reallocate_Redefine :
+    #procedure test()
+        #ifndef `allTensors'
+            #globaldefine allTensors "A"
+        #else
+            #redefine allTensors "`allTensors',AFieldStrength"
+        #endif
+    #endprocedure
+
+    #procedure outer()
+        #call test()
+        #call test()
+    #endprocedure
+
+    #call outer()
+    
+    Symbols x, A, AFieldStrength;
+    Local F = x*`allTensors';
+    Print;
+    .end
+    assert succeeded?
+    assert result("F") =~ expr("x*A*AFieldStrength")
+*--#] Scoping_GlobalDefine_Reallocate_Redefine :
+

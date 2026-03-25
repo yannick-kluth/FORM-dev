@@ -1131,7 +1131,7 @@ int PutPreVar(UBYTE *name, UBYTE *value, UBYTE *args, int mode)
 	s = name;  while ( *s ) { s++; num++; }
 	t = (UBYTE *)Malloc1(num,"PreVariable");
 	p->name = t;
-	p->global = 0;
+	if ( i < 0 ) p->global = 0;
 	s = name;  while ( *s ) *t++ = *s++; *t++ = 0;
 	if ( value ) {
 		p->value = t;
