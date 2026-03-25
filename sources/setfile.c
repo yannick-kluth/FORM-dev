@@ -313,7 +313,7 @@ restart:;
 				if ( sp->value ) M_free((UBYTE *)(sp->value),"Process option");
 				sp->value = (LONG)strDup1(s2,"Process option");
 */
-				if ( TheDefine(s2,2) ) error = 1;
+				if ( TheDefine(s2,2,0) ) error = 1;
 				break;
 			default:
 				Error1("Error in setupparameter table for:",s1);

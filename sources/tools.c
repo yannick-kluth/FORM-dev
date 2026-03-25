@@ -760,11 +760,7 @@ STREAM *CloseStream(STREAM *stream)
 	Look whether we have to pop preprocessor variables.
 */
 	if ( stream->prevars >= 0 ) {
-		while ( NumPre > stream->prevars ) {
-			NumPre--;
-			M_free(PreVar[NumPre].name,"PreVar[NumPre].name");
-			PreVar[NumPre].name = PreVar[NumPre].value = 0;
-		}
+		PopPreVars(stream->prevars);
 	}
 	if ( stream->type == PREVARSTREAM ) {
 		AP.AllowDelay = stream->olddelay;

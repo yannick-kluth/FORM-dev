@@ -38,4 +38,5 @@ EXTRA_DIST = \
 	features.frm \
 	fixes.frm \
 	formunit/fu.frm \
+	prepro.frm \
 	user.frm

@@ -827,6 +827,7 @@ typedef struct pReVaR {
 	UBYTE *argnames;	/**< names of arguments, zero separated. points into memory of name */
 	int nargs;			/**< 0 = regular, >= 1: number of macro arguments. total number */
 	int wildarg;		/**< The number of a potential ?var. If none: 0. wildarg<nargs */
+	WORD global;		/**< 1 if variable is global, 0 otherwise */
 } PREVAR;
  
 /**

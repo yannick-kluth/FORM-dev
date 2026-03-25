@@ -86,6 +86,7 @@ static KEYWORD precommands[] = {
 	,{"external"     , DoExternal     , 0, 0}
 	,{"factdollar"   , DoFactDollar   , 0, 0}
 	,{"fromexternal" , DoFromExternal , 0, 0}
+	,{"globaldefine" , DoGlobalDefine , 0, 0}
 	,{"if"           , DoIf           , 0, 0}
 	,{"ifdef"        , DoIfydef       , 0, 0}
 	,{"ifndef"       , DoIfndef       , 0, 0}
@@ -1130,6 +1131,7 @@ int PutPreVar(UBYTE *name, UBYTE *value, UBYTE *args, int mode)
 	s = name;  while ( *s ) { s++; num++; }
 	t = (UBYTE *)Malloc1(num,"PreVariable");
 	p->name = t;
+	p->global = 0;
 	s = name;  while ( *s ) *t++ = *s++; *t++ = 0;
 	if ( value ) {
 		p->value = t;
@@ -1179,12 +1181,24 @@ int PutPreVar(UBYTE *name, UBYTE *value, UBYTE *args, int mode)
 
 void PopPreVars(int tonumber)
 {
-	PREVAR *p = &(PreVar[NumPre]);
-	while ( NumPre > tonumber ) {
-		NumPre--; p--;
-		M_free(p->name,"popping PreVar");
-		p->name = p->value = 0;
+	int i;
+	int dest = tonumber;
+	for ( i = tonumber; i < NumPre; i++ ) {
+		if ( PreVar[i].global ) {
+			if ( dest != i ) {
+				PreVar[dest] = PreVar[i];
+			}
+			dest++;
+		}
+		else {
+			M_free(PreVar[i].name,"popping PreVar");
+			PreVar[i].name = PreVar[i].value = 0;
+		}
 	}
+	for ( i = dest; i < NumPre; i++ ) {
+		PreVar[i].name = PreVar[i].value = 0;
+	}
+	NumPre = dest;
 }
 
 /*
@@ -2383,7 +2397,7 @@ KEYWORD *FindInKeyWord(UBYTE *theword, KEYWORD *table, int size)
  *                  preprocessor if/switch status.
  *  @return         zero: no errors, negative number: errors.
  */
-int TheDefine(UBYTE *s, int mode)
+int TheDefine(UBYTE *s, int mode, int global)
 {
 	UBYTE *name, *value, *valpoin, *args = 0, c;
 	if ( ( mode & 2 ) == 0 ) {
@@ -2399,7 +2413,9 @@ int TheDefine(UBYTE *s, int mode)
 	while ( *s == ' ' || *s == '\t' ) s++;
 	c = *s; *value = 0;
 	if ( c == 0 ) {
-		if ( PutPreVar(name,(UBYTE *)"1",0,mode) < 0 ) return(-1);
+		int ii = PutPreVar(name,(UBYTE *)"1",0,mode);
+		if ( ii < 0 ) return(-1);
+		if ( global ) PreVar[ii].global = 1;
 		return(0);
 	}
 	if ( c == '(' ) {	/* arguments. scan for correctness */
@@ -2430,7 +2446,11 @@ int TheDefine(UBYTE *s, int mode)
 			else *valpoin++ = *s++;
 		}
 		*valpoin = 0;
-		if ( PutPreVar(name,value,args,mode) < 0 ) return(-1);
+		{
+			int ii = PutPreVar(name,value,args,mode);
+			if ( ii < 0 ) return(-1);
+			if ( global ) PreVar[ii].global = 1;
+		}
 	}
 	else {
 		MesPrint("@Illegal string for preprocessor variable %s. Forgotten double quotes (\") ?",name);
@@ -2520,7 +2540,7 @@ int DoPreAssign(UBYTE *s)
 
 int DoDefine(UBYTE *s)
 {
-	return(TheDefine(s,0));
+	return(TheDefine(s,0,0));
 }
 
 /*
@@ -2530,7 +2550,17 @@ int DoDefine(UBYTE *s)
 
 int DoRedefine(UBYTE *s)
 {
-	return(TheDefine(s,1));
+	return(TheDefine(s,1,0));
+}
+
+/*
+ 		#] DoRedefine : 
+ 		#[ DoGlobalDefine :
+*/
+
+int DoGlobalDefine(UBYTE *s)
+{
+	return(TheDefine(s,0,1));
 }
 
 /*

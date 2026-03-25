@@ -758,8 +758,9 @@ the \#endswitch instruction.
 
 \#define name "string"
  
-\noindent See also redefine (\ref{preredefine}), undefine 
-(\ref{preundefine})
+\noindent See also globaldefine (\ref{preglobaldefine}), 
+           redefine (\ref{preredefine}), 
+           undefine (\ref{preundefine})
 
 \noindent in which name\index{\#define} refers to the name of the 
 preprocessor\index{preprocessor variable} 
@@ -1803,6 +1804,34 @@ the instruction will be equivalent to the \#define\index{\#define}
 instruction.
 
 %--#] redefine : 
+%--#[ globaldefine :
+ 
+\section{\#globaldefine}
+\label{preglobaldefine}
+ 
+\noindent Syntax:
+ 
+\#globaldefine name "string"
+ 
+\noindent See also define (\ref{predefine}), redefine (\ref{preredefine}), 
+           undefine (\ref{preundefine})
+ 
+\noindent The \#globaldefine\index{\#globaldefine} instruction creates a new 
+instance of a preprocessor\index{preprocessor variable} 
+variable\index{variable!preprocessor} that persists even if it is defined 
+inside a \#procedure or other nested scope. Unlike \#define, which creates 
+a local instance that is automatically undefined when the current stream 
+(like a procedure) is closed, \#globaldefine ensures that the definition 
+is preserved and "bubbles up" to the global scope.
+ 
+If a variable with the same name already exists in the current local scope, 
+\#globaldefine will create a new entry (or update an existing global one) 
+that will become visible once the local definitions are popped. This is 
+particularly useful for procedures that need to return information to the 
+global scope without requiring the variables to be pre-declared for use 
+with \#redefine.
+ 
+%--#] globaldefine : 
 %--#[ remove :
  
 \section{\#remove}
