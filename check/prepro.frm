@@ -130,3 +130,19 @@
     assert result("F") =~ expr("x*A*AFieldStrength")
 *--#] Scoping_GlobalDefine_Reallocate_Redefine :
 
+*--#[ Scoping_GlobalDefine_Loop :
+    #procedure test()
+        #do i = 1,1
+            #globaldefine loopglobalvar "survived"
+        #enddo
+    #endprocedure
+    #call test()
+    Local F = 0;
+    #ifdef `loopglobalvar'
+        Local F = 1;
+    #endif
+    Print;
+    .end
+    assert succeeded?
+    assert result("F") =~ expr("1")
+*--#] Scoping_GlobalDefine_Loop :

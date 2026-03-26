@@ -2608,11 +2608,12 @@ int TheUndefine(UBYTE *name)
 			NumPre--;
 			inum = i;
 			while ( i < NumPre ) {
-				p->name  = p[1].name;
-				p->value = p[1].value;
+				*p = p[1];
 				p++; i++;
 			}
 			p->name = 0; p->value = 0;
+			p->argnames = 0; p->nargs = 0;
+			p->global = 0; p->wildarg = 0;
 			{
 				CBUF *CC = cbuf + AC.cbufnum;
 				int j, k;
