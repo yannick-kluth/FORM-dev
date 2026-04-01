@@ -1489,6 +1489,7 @@ void IniVars(void)
 	AC.NwildC = 0;
 	AC.OutputMode = 0;
 	AM.gOutputMode = 0;
+	AC.DummyPrefix = 0;
 	AC.OutputSpaces = NORMALFORMAT;
 	AM.gOutputSpaces = NORMALFORMAT;
 	AC.OutNumberType = RATIONALMODE;

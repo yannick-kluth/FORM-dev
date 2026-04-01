@@ -56,6 +56,7 @@ static KEYWORD formatoptions[] = {
 	,{"fortran90",		(TFUN)0,	FORTRANMODE,		4}
 	,{"maple",			(TFUN)0,	MAPLEMODE,			0}
 	,{"mathematica",	(TFUN)0,	MATHEMATICAMODE,	0}
+	,{"nodummy",		(TFUN)0,	NODUMMYMODE,		6}
 	,{"normal",			(TFUN)0,	NORMALFORMAT,		1}
 	,{"nospaces",		(TFUN)0,	NOSPACEFORMAT,		3}
 	,{"pfortran",		(TFUN)0,	PFORTRANMODE,		0}
@@ -409,6 +410,29 @@ WrongOption:		MesPrint("&Illegal option in Format FloatPrecision: %s",s);
 				}
 			}
 #endif
+			else if ( key->flags == 6 ) {
+				AC.OutputMode = key->type;
+				s += strlen(key->name);
+				while ( *s == ' ' || *s == '\t' ) s++;
+				if ( *s == '(' ) {
+					s++; ss = s;
+					while ( *s && *s != ')' && *s != ' ' && *s != '\t' && *s != ',' ) s++;
+					if ( *s == ')' ) {
+						*s = 0;
+						if ( AC.DummyPrefix ) M_free(AC.DummyPrefix,"Dummy Prefix");
+						AC.DummyPrefix = strDup1(ss,"Dummy Prefix");
+						s++;
+					}
+					else {
+						MesPrint("&Missing ) in Format nodummy(...)");
+						error = 1;
+					}
+				}
+				else {
+					if ( AC.DummyPrefix ) M_free(AC.DummyPrefix,"Dummy Prefix");
+					AC.DummyPrefix = strDup1((UBYTE *)"a","Dummy Prefix");
+				}
+			}
 		}
 		else if ( ( *s == 'c' || *s == 'C' ) && ( FG.cTable[s[1]] == 1 ) ) {
 			UBYTE *ss = s+1;

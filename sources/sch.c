@@ -1462,10 +1462,16 @@ void WriteArgument(WORD *t)
 				i = t[1];
 				if ( i >= AM.IndDum ) {
 					i -= AM.IndDum;
-					*Out++ = 'N';
-					Out = NumCopy(i,Out);
-					if ( AC.OutputMode == MATHEMATICAMODE ) Out = StrCopy((UBYTE *)"sumindex",Out); else { *Out++ = '_';
-					*Out++ = '?'; }
+					if ( AC.OutputMode == NODUMMYMODE ) {
+						Out = StrCopy(AC.DummyPrefix,Out);
+						Out = NumCopy(i,Out);
+					}
+					else {
+						*Out++ = 'N';
+						Out = NumCopy(i,Out);
+						if ( AC.OutputMode == MATHEMATICAMODE ) Out = StrCopy((UBYTE *)"sumindex",Out); else { *Out++ = '_';
+						*Out++ = '?'; }
+					}
 					*Out = 0;
 				}
 				else {
@@ -1614,10 +1620,16 @@ int WriteSubTerm(WORD *sterm, WORD first)
 					i = *t++;
 					if ( i >= AM.IndDum ) {
 						i -= AM.IndDum;
-						*Out++ = 'N';
-						Out = NumCopy(i,Out);
-						if ( AC.OutputMode == MATHEMATICAMODE ) Out = StrCopy((UBYTE *)"sumindex",Out); else { *Out++ = '_';
-						*Out++ = '?'; }
+						if ( AC.OutputMode == NODUMMYMODE ) {
+							Out = StrCopy(AC.DummyPrefix,Out);
+							Out = NumCopy(i,Out);
+						}
+						else {
+							*Out++ = 'N';
+							Out = NumCopy(i,Out);
+							if ( AC.OutputMode == MATHEMATICAMODE ) Out = StrCopy((UBYTE *)"sumindex",Out); else { *Out++ = '_';
+							*Out++ = '?'; }
+						}
 						*Out = 0;
 					}
 					else
@@ -1653,10 +1665,16 @@ int WriteSubTerm(WORD *sterm, WORD first)
 					if ( i >= AM.IndDum ) {
 						i -= AM.IndDum;
 						Out = buffer;
-						*Out++ = 'N';
-						Out = NumCopy(i,Out);
-						if ( AC.OutputMode == MATHEMATICAMODE ) Out = StrCopy((UBYTE *)"sumindex",Out); else { *Out++ = '_';
-						*Out++ = '?'; }
+						if ( AC.OutputMode == NODUMMYMODE ) {
+							Out = StrCopy(AC.DummyPrefix,Out);
+							Out = NumCopy(i,Out);
+						}
+						else {
+							*Out++ = 'N';
+							Out = NumCopy(i,Out);
+							if ( AC.OutputMode == MATHEMATICAMODE ) Out = StrCopy((UBYTE *)"sumindex",Out); else { *Out++ = '_';
+							*Out++ = '?'; }
+						}
 						*Out = 0;
 					}
 					else {
@@ -1702,10 +1720,16 @@ int WriteSubTerm(WORD *sterm, WORD first)
 						t++;
 					}
 					else {
-						*Out++ = 'N';
-						Out = NumCopy( *t++ - AM.IndDum, Out);
-						if ( AC.OutputMode == MATHEMATICAMODE ) Out = StrCopy((UBYTE *)"sumindex",Out); else { *Out++ = '_';
-						*Out++ = '?'; }
+						if ( AC.OutputMode == NODUMMYMODE ) {
+							Out = StrCopy(AC.DummyPrefix,Out);
+							Out = NumCopy( *t++ - AM.IndDum, Out);
+						}
+						else {
+							*Out++ = 'N';
+							Out = NumCopy( *t++ - AM.IndDum, Out);
+							if ( AC.OutputMode == MATHEMATICAMODE ) Out = StrCopy((UBYTE *)"sumindex",Out); else { *Out++ = '_';
+							*Out++ = '?'; }
+						}
 						*Out = 0;
 					}
 				}
@@ -1721,10 +1745,16 @@ int WriteSubTerm(WORD *sterm, WORD first)
 						t++;
 					}
 					else {
-						*Out++ = 'N';
-						Out = NumCopy(*t++ - AM.IndDum,Out);
-						if ( AC.OutputMode == MATHEMATICAMODE ) Out = StrCopy((UBYTE *)"sumindex",Out); else { *Out++ = '_';
-						*Out++ = '?'; }
+						if ( AC.OutputMode == NODUMMYMODE ) {
+							Out = StrCopy(AC.DummyPrefix,Out);
+							Out = NumCopy(*t++ - AM.IndDum,Out);
+						}
+						else {
+							*Out++ = 'N';
+							Out = NumCopy(*t++ - AM.IndDum,Out);
+							if ( AC.OutputMode == MATHEMATICAMODE ) Out = StrCopy((UBYTE *)"sumindex",Out); else { *Out++ = '_';
+							*Out++ = '?'; }
+						}
 					}
 				}
 				else {
@@ -1926,10 +1956,16 @@ int WriteSubTerm(WORD *sterm, WORD first)
 						}
 						else {
 							Out = buffer;
-							*Out++ = 'N';
-							Out = NumCopy(j - AM.IndDum,Out);
-							if ( AC.OutputMode == MATHEMATICAMODE ) Out = StrCopy((UBYTE *)"sumindex",Out); else { *Out++ = '_';
-							*Out++ = '?'; }
+							if ( AC.OutputMode == NODUMMYMODE ) {
+								Out = StrCopy(AC.DummyPrefix,Out);
+								Out = NumCopy(j - AM.IndDum,Out);
+							}
+							else {
+								*Out++ = 'N';
+								Out = NumCopy(j - AM.IndDum,Out);
+								if ( AC.OutputMode == MATHEMATICAMODE ) Out = StrCopy((UBYTE *)"sumindex",Out); else { *Out++ = '_';
+								*Out++ = '?'; }
+							}
 							*Out = 0;
 							TokenToLine(buffer);
 						}

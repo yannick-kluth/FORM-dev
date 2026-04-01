@@ -1848,6 +1848,7 @@ struct C_const {
     int    FlintPolyFlag;          /* Use Flint for polynomial arithmetic */
     int     HumanStatsFlag;        /* Print human-readable stats in the stats print? */
     int     GrccVerbose;           /* Enable extra print statements in grcc? */
+    UBYTE   *DummyPrefix;          /* Prefix for dummy indices in NODUMMYMODE */
 	int     doloopstacksize;
 	int     dolooplevel;
     int     CheckpointFlag;        /**< Tells preprocessor whether checkpoint code must executed.
